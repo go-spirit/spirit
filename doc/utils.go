@@ -1,5 +1,5 @@
 package doc
 
-func ObjectToField() (field *Field, err error) {
+func ObjectToFields() (fields *[]Field, err error) {
 	return
 }
