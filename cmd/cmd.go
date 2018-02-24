@@ -50,12 +50,19 @@ func newCmd(opts ...Option) Cmd {
 	cmd := new(cmd)
 	cmd.opts = options
 	cmd.app = cli.NewApp()
+	cmd.app.Usage = ""
+	cmd.app.Description = "go-spirit is a flow-based, actor-like message process framework"
 
 	cmd.app.Commands = cli.Commands{
 		cli.Command{
-			Name:   "components",
-			Usage:  "list registered components",
-			Action: cmd.components,
+			Name:  "list",
+			Usage: "list what you want to known",
+			Subcommands: cli.Commands{
+				cli.Command{
+					Name:   "components",
+					Action: cmd.components,
+				},
+			},
 		},
 		cli.Command{
 			Name:   "document",
@@ -81,6 +88,10 @@ func newCmd(opts ...Option) Cmd {
 		},
 	}
 
+	if cmd.app.Version == "0.0.0" {
+		cmd.app.HideVersion = true
+	}
+
 	return cmd
 }
 
@@ -93,7 +104,7 @@ func (p *cmd) components(ctx *cli.Context) error {
 		buf.WriteString(fmt.Sprintf("- %s: %s\n", comp.Name, comp.RegisterFunc))
 	}
 
-	fmt.Println(buf.String())
+	fmt.Print(buf.String())
 
 	return nil
 }
