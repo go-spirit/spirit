@@ -1,0 +1,36 @@
+syntax = "proto3";
+package protocol;
+
+message Port {
+	string url                   = 1;
+	map<string, string> metadata = 2;
+}
+
+message Graph {
+	int32 seq            = 1;
+	repeated Port ports  = 2;
+	repeated Port errors = 3;
+}
+
+message Error {
+	string namespace            = 1;
+	int64 code                  = 2;
+	string description          = 3;
+	string stack                = 4;
+	map<string, string> context = 5;
+}
+
+message Message {
+	string id                  = 1;
+	map<string, string> header = 2;
+	bytes body                 = 3;
+	Error error                = 4;
+}
+
+message Payload {
+	string id                   = 1;
+	int64 timestamp             = 2;
+	Graph graph                 = 3;
+	Message message             = 4;
+	map<string, string> context = 5;
+}
