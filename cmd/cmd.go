@@ -141,7 +141,7 @@ func (p *cmd) run(ctx *cli.Context) (err error) {
 		return
 	}
 
-	err = s.Start()
+	err = s.Run()
 
 	return
 }

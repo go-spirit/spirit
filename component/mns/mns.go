@@ -13,6 +13,7 @@ import (
 	"github.com/go-spirit/spirit/protocol"
 	"github.com/go-spirit/spirit/worker"
 	"github.com/gogap/ali_mns"
+	"github.com/sirupsen/logrus"
 )
 
 type mnsQueue struct {
@@ -179,13 +180,12 @@ func (p *MNSComponent) receiveMessage() {
 					break
 				}
 
-				fmt.Println(err)
+				if !ali_mns.ERR_MNS_MESSAGE_NOT_EXIST.IsEqual(err) {
+					logrus.WithField("component", "mns").WithError(err).Errorln("receive mns message failure")
+				}
 			}
 		case <-p.stopC:
 			{
-				if len(p.respChan) > 0 || len(p.errChan) > 0 {
-					continue
-				}
 				p.stopC <- true
 				break
 			}
@@ -199,13 +199,17 @@ func (p *MNSComponent) Stop() error {
 		return nil
 	}
 
+	logrus.WithField("component", "mns").WithField("queue-count", len(p.queues)).Infoln("stopping...")
+
 	wg := &sync.WaitGroup{}
 	wg.Add(len(p.queues))
 
 	for _, q := range p.queues {
 		go func() {
 			defer wg.Done()
+			logrus.WithField("component", "mns").WithField("queue", q.Name).Infoln("stopping...")
 			q.Queue.Stop()
+			logrus.WithField("component", "mns").WithField("queue", q.Name).Infoln("stopped.")
 		}()
 	}
 
@@ -217,6 +221,8 @@ func (p *MNSComponent) Stop() error {
 	close(p.errChan)
 	close(p.respChan)
 	close(p.stopC)
+
+	logrus.WithField("component", "mns").Infoln("Stopped.")
 
 	return nil
 }

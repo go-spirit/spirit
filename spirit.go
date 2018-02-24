@@ -3,7 +3,10 @@ package spirit
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 
 	"github.com/sirupsen/logrus"
 
@@ -125,7 +128,7 @@ func (p *Spirit) generateActors() (err error) {
 	return
 }
 
-func (p *Spirit) Start() (err error) {
+func (p *Spirit) Run() (err error) {
 
 	for _, act := range p.actors {
 		err = act.Start()
@@ -135,6 +138,18 @@ func (p *Spirit) Start() (err error) {
 	}
 
 	err = p.postman.Start()
+	if err != nil {
+		return
+	}
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL)
+
+	select {
+	case <-ch:
+	}
+
+	err = p.Stop()
 	if err != nil {
 		return
 	}
