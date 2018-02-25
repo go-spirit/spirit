@@ -80,7 +80,7 @@ func newCmd(opts ...Option) Cmd {
 			Usage:  "run components",
 			Action: cmd.run,
 			Flags: []cli.Flag{
-				cli.StringSliceFlag{
+				cli.StringFlag{
 					Name:  "config",
 					Usage: "config file",
 				},
@@ -138,15 +138,11 @@ func (p *cmd) document(ctx *cli.Context) (err error) {
 
 func (p *cmd) run(ctx *cli.Context) (err error) {
 
-	configfiles := ctx.StringSlice("config")
+	conf := ctx.String("config")
 
-	var opts []spirit.Option
-
-	for _, conf := range configfiles {
-		opts = append(opts, spirit.ConfigFile(conf))
-	}
-
-	s, err := spirit.New(opts...)
+	s, err := spirit.New(
+		spirit.ConfigFile(conf),
+	)
 
 	if err != nil {
 		return

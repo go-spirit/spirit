@@ -3,7 +3,6 @@ package mns
 import (
 	"errors"
 	"fmt"
-	"net/url"
 	"sync"
 
 	"github.com/go-spirit/spirit/component"
@@ -12,6 +11,7 @@ import (
 	"github.com/go-spirit/spirit/message"
 	"github.com/go-spirit/spirit/protocol"
 	"github.com/go-spirit/spirit/worker"
+	"github.com/go-spirit/spirit/worker/fbp"
 	"github.com/gogap/ali_mns"
 	"github.com/sirupsen/logrus"
 )
@@ -227,17 +227,20 @@ func (p *MNSComponent) Stop() error {
 	return nil
 }
 
+// It is a send out func
 func (p *MNSComponent) sendMessage(session mail.Session) (err error) {
 
-	port := session.Value(worker.CtxKeyPort{}).(*worker.CtxValuePort)
+	fbp.BreakSession(session)
+	fmt.Println("break session on send message")
 
-	toURL, err := url.Parse(port.To)
-	if err != nil {
-		err = fmt.Errorf("parse port to url failure")
+	port := fbp.GetSessionPort(session)
+
+	if port == nil {
+		err = errors.New("port info not exist")
 		return
 	}
 
-	queueName := toURL.Query().Get("queue")
+	queueName := session.Query("queue")
 
 	if len(queueName) == 0 {
 		err = fmt.Errorf("queue name is empty")
@@ -262,14 +265,21 @@ func (p *MNSComponent) sendMessage(session mail.Session) (err error) {
 	}
 
 	if len(endpoint) == 0 || len(akId) == 0 || len(akSecret) == 0 {
-		err = fmt.Errorf("error mns send params in msn component, port to url: %s", port.To)
+		err = fmt.Errorf("error mns send params in msn component, port to url: %s", port.Url)
 		return
 	}
 
 	client := ali_mns.NewAliMNSClient(endpoint, akId, akSecret)
 	queue := ali_mns.NewMNSQueue(queueName, client)
 
-	payload := session.Payload().(*protocol.Payload)
+	payload, ok := session.Payload().(*protocol.Payload)
+	if !ok {
+		err = errors.New("could not convert session payload to *protocol.Payload")
+		return
+	}
+
+	// the next reciver will process the next port
+	payload.GetGraph().MoveForward()
 
 	data, err := payload.ToBytes()
 

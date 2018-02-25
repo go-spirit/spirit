@@ -17,6 +17,7 @@ import (
 	"github.com/go-spirit/spirit/message"
 	"github.com/go-spirit/spirit/protocol"
 	"github.com/go-spirit/spirit/worker"
+	"github.com/go-spirit/spirit/worker/fbp"
 )
 
 type HTTPComponent struct {
@@ -161,8 +162,11 @@ func (p *HTTPComponent) serve(c *gin.Context) {
 
 }
 
+// It is a send out func
 func (p *HTTPComponent) Handler() worker.HandlerFunc {
 	return func(session mail.Session) (err error) {
+
+		fbp.BreakSession(session)
 
 		item, ok := session.Value(ctxHttpComponentKey{}).(*httpCacheItem)
 		if !ok {
@@ -183,6 +187,9 @@ func (p *HTTPComponent) Handler() worker.HandlerFunc {
 		if item.ctx.Err() != nil {
 			return
 		}
+
+		// the next reciver will process the next port
+		payload.GetGraph().MoveForward()
 
 		item.c.JSON(http.StatusOK, payload)
 

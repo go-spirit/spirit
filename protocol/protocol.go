@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync/atomic"
 
 	gogaperrors "github.com/gogap/errors"
 
@@ -47,7 +48,7 @@ func (p *Graph) MoveForward() (err error) {
 		return
 	}
 
-	p.Seq += 1
+	atomic.AddInt32(&p.Seq, 1)
 
 	return
 }
@@ -66,7 +67,14 @@ func (p *Graph) CurrentPort() (port *Port, err error) {
 		return
 	}
 
-	port = ports[seq]
+	for i := 0; i < len(ports); i++ {
+		if ports[i].GetSeq() == seq {
+			port = ports[i]
+			return
+		}
+	}
+
+	err = errors.New("current port not found")
 
 	return
 }
@@ -85,7 +93,14 @@ func (p *Graph) PrevPort() (port *Port, err error) {
 		return
 	}
 
-	port = ports[seq-1]
+	for i := 0; i < len(ports); i++ {
+		if ports[i].GetSeq() == seq-1 {
+			port = ports[i]
+			return
+		}
+	}
+
+	err = errors.New("prev port not found")
 
 	return
 }
@@ -102,9 +117,14 @@ func (p *Graph) NextPort() (port *Port, has bool) {
 		return nil, false
 	}
 
-	port = ports[seq+1]
+	for i := 0; i < len(ports); i++ {
+		if ports[i].GetSeq() == seq+1 {
+			port = ports[i]
+			return
+		}
+	}
 
-	return port, true
+	return
 }
 
 func (p *Port) GetUrlQuery() (values url.Values, err error) {

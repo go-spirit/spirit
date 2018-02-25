@@ -2,8 +2,9 @@ syntax = "proto3";
 package protocol;
 
 message Port {
-	string url                   = 1;
-	map<string, string> metadata = 2;
+	int32 seq                    = 1;
+	string url                   = 2;
+	map<string, string> metadata = 3;
 }
 
 message Graph {

@@ -1,38 +1,79 @@
-package worker
+package fbp
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/go-spirit/spirit/mail"
 	"github.com/go-spirit/spirit/message"
 	"github.com/go-spirit/spirit/protocol"
+	"github.com/go-spirit/spirit/worker"
 )
 
 var (
 	ErrWorkerHasNoPostman = errors.New("invoker has no postman")
 )
 
-type CtxKeyPayload struct{}
+// type CtxKeyPayload struct{}
 
-type CtxKeyPort struct{}
-type CtxValuePort struct {
-	To       string
-	Metadata map[string]string
+type ctxKeyPort struct{}
+type ctxValuePort struct {
+	IsErrorPort bool
+	Url         string
+	Metadata    map[string]string
 }
 
+type ctxKeyBreakSession struct{}
+
 type fbpWorker struct {
-	opts WorkerOptions
+	opts worker.WorkerOptions
 
 	lock  sync.Mutex
 	stopC chan bool
 }
 
 func init() {
-	RegisterWorker("fbp", NewFBPWorker)
+	worker.RegisterWorker("fbp", NewFBPWorker)
 }
 
-func NewFBPWorker(opts ...WorkerOption) (worker Worker, err error) {
+func BreakSession(s mail.Session) {
+
+	if IsSessionBreaked(s) {
+		return
+	}
+
+	s.WithValue(ctxKeyBreakSession{}, true)
+}
+
+func IsSessionBreaked(s mail.Session) bool {
+	breaked, ok := s.Value(ctxKeyBreakSession{}).(bool)
+	if ok {
+		return breaked
+	}
+
+	return false
+}
+
+func SessionWithPort(s mail.Session, url string, isErrorPort bool, metadata map[string]string) {
+	s.WithValue(
+		ctxKeyPort{},
+		&ctxValuePort{
+			isErrorPort, url, metadata,
+		},
+	)
+}
+
+func GetSessionPort(s mail.Session) *ctxValuePort {
+	port, ok := s.Value(ctxKeyPort{}).(*ctxValuePort)
+	if !ok {
+		return nil
+	}
+
+	return port
+}
+
+func NewFBPWorker(opts ...worker.WorkerOption) (worker worker.Worker, err error) {
 
 	a := &fbpWorker{
 		stopC: make(chan bool),
@@ -52,7 +93,7 @@ func NewFBPWorker(opts ...WorkerOption) (worker Worker, err error) {
 	return
 }
 
-func (p *fbpWorker) Init(opts ...WorkerOption) {
+func (p *fbpWorker) Init(opts ...worker.WorkerOption) {
 	for _, o := range opts {
 		o(&p.opts)
 	}
@@ -101,6 +142,17 @@ func (p *fbpWorker) moveForwardAndPost(m mail.UserMessage, e error) (err error) 
 		return
 	}
 
+	sessionPort := GetSessionPort(session)
+	if sessionPort == nil {
+		err = errors.New("session did not have port info")
+		return
+	}
+
+	// errors info already processed, do not post to next
+	if sessionPort.IsErrorPort {
+		return
+	}
+
 	if session.Payload() == nil {
 		err = errors.New("payload is nil")
 		return
@@ -127,6 +179,12 @@ func (p *fbpWorker) moveForwardAndPost(m mail.UserMessage, e error) (err error) 
 
 	if session.Err() == nil {
 
+		if IsSessionBreaked(session) {
+			fmt.Println("breaked")
+			return
+		}
+		fmt.Println("not breaked")
+
 		next, hasNext := graph.NextPort()
 
 		if !hasNext {
@@ -140,12 +198,7 @@ func (p *fbpWorker) moveForwardAndPost(m mail.UserMessage, e error) (err error) 
 
 		session.WithFromTo(current.GetUrl(), next.GetUrl())
 
-		session.WithValue(
-			CtxKeyPort{},
-			&CtxValuePort{
-				To:       next.GetUrl(),
-				Metadata: next.GetMetadata(),
-			})
+		SessionWithPort(session, next.GetUrl(), false, next.GetMetadata())
 
 		err = p.opts.Postman.Post(message.NewUserMessage(session))
 		return
@@ -163,17 +216,12 @@ func (p *fbpWorker) moveForwardAndPost(m mail.UserMessage, e error) (err error) 
 				continue
 			}
 
-			newEnv := session.Fork()
-			newEnv.WithFromTo(currentURL, to)
-			newEnv.WithValue(
-				CtxKeyPort{},
-				&CtxValuePort{
-					To:       to,
-					Metadata: nextPorts[i].GetMetadata(),
-				},
-			)
+			newSession := session.Fork()
+			newSession.WithFromTo(currentURL, to)
 
-			umsg := message.NewUserMessage(newEnv)
+			SessionWithPort(newSession, to, true, nextPorts[i].GetMetadata())
+
+			umsg := message.NewUserMessage(newSession)
 			err = p.opts.Postman.Post(umsg)
 			return
 		}

@@ -2,6 +2,7 @@ package mail
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/go-spirit/spirit/context"
@@ -33,6 +34,8 @@ type Contenter interface {
 type Session interface {
 	From() string
 	To() string
+	Query(key string) string
+
 	WithFromTo(from, to string)
 
 	Payload() interface{}
@@ -103,6 +106,15 @@ func (p *defaultSession) To() string {
 	}
 
 	return ""
+}
+
+func (p *defaultSession) Query(key string) string {
+	u, err := url.Parse(p.To())
+	if err != nil {
+		return ""
+	}
+
+	return u.Query().Get(key)
 }
 
 func (p *defaultSession) Err() error {

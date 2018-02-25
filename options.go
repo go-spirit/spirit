@@ -34,13 +34,6 @@ type Option func(*Options)
 func ConfigFile(filename string) Option {
 	return func(o *Options) {
 
-		if o.config == nil {
-			o.config = config.NewConfig(
-				config.ConfigFile(filename),
-			)
-			return
-		}
-
 		o.config.WithFallback(
 			config.NewConfig(
 				config.ConfigFile(filename),

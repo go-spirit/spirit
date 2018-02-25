@@ -1,4 +1,4 @@
-package worker
+package fbp
 
 import (
 	"github.com/go-spirit/spirit/mail"
