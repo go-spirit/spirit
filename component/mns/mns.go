@@ -301,7 +301,7 @@ func (p *MNSComponent) sendMessage(session mail.Session) (err error) {
 	return
 }
 
-func (p *MNSComponent) Handler() worker.HandlerFunc {
+func (p *MNSComponent) Route(mail.Session) worker.HandlerFunc {
 	return p.sendMessage
 }
 

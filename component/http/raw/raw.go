@@ -162,41 +162,42 @@ func (p *HTTPComponent) serve(c *gin.Context) {
 
 }
 
-// It is a send out func
-func (p *HTTPComponent) Handler() worker.HandlerFunc {
-	return func(session mail.Session) (err error) {
+func (p *HTTPComponent) sendMessage(session mail.Session) (err error) {
+	fbp.BreakSession(session)
 
-		fbp.BreakSession(session)
-
-		item, ok := session.Value(ctxHttpComponentKey{}).(*httpCacheItem)
-		if !ok {
-			err = errors.New("http component handler could not get response object")
-			return
-		}
-
-		if item.done == nil || item.ctx == nil {
-			return
-		}
-
-		payload, ok := session.Payload().(*protocol.Payload)
-		if !ok {
-			err = errors.New("could not convert session payload to *protocol.Payload")
-			return
-		}
-
-		if item.ctx.Err() != nil {
-			return
-		}
-
-		// the next reciver will process the next port
-		payload.GetGraph().MoveForward()
-
-		item.c.JSON(http.StatusOK, payload)
-
-		item.done <- struct{}{}
-
+	item, ok := session.Value(ctxHttpComponentKey{}).(*httpCacheItem)
+	if !ok {
+		err = errors.New("http component handler could not get response object")
 		return
 	}
+
+	if item.done == nil || item.ctx == nil {
+		return
+	}
+
+	payload, ok := session.Payload().(*protocol.Payload)
+	if !ok {
+		err = errors.New("could not convert session payload to *protocol.Payload")
+		return
+	}
+
+	if item.ctx.Err() != nil {
+		return
+	}
+
+	// the next reciver will process the next port
+	payload.GetGraph().MoveForward()
+
+	item.c.JSON(http.StatusOK, payload)
+
+	item.done <- struct{}{}
+
+	return
+}
+
+// It is a send out func
+func (p *HTTPComponent) Route(session mail.Session) worker.HandlerFunc {
+	return p.sendMessage
 }
 
 func (p *HTTPComponent) Start() error {

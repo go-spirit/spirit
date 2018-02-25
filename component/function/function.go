@@ -3,6 +3,7 @@ package function
 import (
 	"context"
 	"errors"
+	"github.com/go-spirit/spirit/mail"
 
 	"github.com/go-spirit/spirit/component"
 	"github.com/go-spirit/spirit/worker"
@@ -57,7 +58,7 @@ func (p *componentFunc) Stop() error {
 	return nil
 }
 
-func (p *componentFunc) Handler() worker.HandlerFunc {
+func (p *componentFunc) Route(mail.Session) worker.HandlerFunc {
 	return p.handler
 }
 

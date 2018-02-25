@@ -2,7 +2,6 @@ package fbp
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/go-spirit/spirit/mail"
@@ -14,8 +13,6 @@ import (
 var (
 	ErrWorkerHasNoPostman = errors.New("invoker has no postman")
 )
-
-// type CtxKeyPayload struct{}
 
 type ctxKeyPort struct{}
 type ctxValuePort struct {
@@ -115,10 +112,15 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 	}
 
 	var errH error
-	if p.opts.Handler != nil {
-		errH = p.opts.Handler(session)
-		if payload.GetMessage().GetError() != nil {
-			errH = payload.GetMessage().GetError()
+	if p.opts.Router != nil {
+
+		handler := p.opts.Router.Route(session)
+
+		if handler != nil {
+			errH = handler(session)
+			if payload.GetMessage().GetError() != nil {
+				errH = payload.GetMessage().GetError()
+			}
 		}
 	}
 
@@ -180,10 +182,8 @@ func (p *fbpWorker) moveForwardAndPost(m mail.UserMessage, e error) (err error) 
 	if session.Err() == nil {
 
 		if IsSessionBreaked(session) {
-			fmt.Println("breaked")
 			return
 		}
-		fmt.Println("not breaked")
 
 		next, hasNext := graph.NextPort()
 

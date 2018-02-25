@@ -6,6 +6,10 @@ import (
 	"github.com/go-spirit/spirit/mail"
 )
 
+type HandlerRouter interface {
+	Route(mail.Session) HandlerFunc
+}
+
 type Worker interface {
 	Init(...WorkerOption)
 
@@ -14,7 +18,7 @@ type Worker interface {
 
 type WorkerOptions struct {
 	Postman mail.Postman
-	Handler HandlerFunc
+	Router  HandlerRouter
 }
 
 type WorkerOption func(*WorkerOptions)
@@ -25,9 +29,9 @@ func Postman(man mail.Postman) WorkerOption {
 	}
 }
 
-func Handler(h HandlerFunc) WorkerOption {
+func Router(r HandlerRouter) WorkerOption {
 	return func(o *WorkerOptions) {
-		o.Handler = h
+		o.Router = r
 	}
 }
 

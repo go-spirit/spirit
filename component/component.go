@@ -55,7 +55,8 @@ func WithValue(key, val interface{}) Option {
 type Component interface {
 	Start() error
 	Stop() error
-	Handler() worker.HandlerFunc
+
+	worker.HandlerRouter
 }
 
 type NewComponentFunc func(...Option) (Component, error)
