@@ -115,6 +115,7 @@ func (p *MNSComponent) init(opts ...component.Option) (err error) {
 }
 
 func (p *MNSComponent) Start() error {
+
 	for _, q := range p.queues {
 		mgr := ali_mns.NewMNSQueueManager(q.AccessKeyId, q.AccessKeySecret)
 		_, err := mgr.GetQueueAttributes(q.Endpoint, q.Name)
@@ -132,25 +133,41 @@ func (p *MNSComponent) Start() error {
 	return nil
 }
 
-func (p *MNSComponent) postMessage(resp ali_mns.MessageReceiveResponse) {
+func (p *MNSComponent) postMessage(resp ali_mns.MessageReceiveResponse) (err error) {
 
 	payload := &protocol.Payload{}
-	err := protocol.Unmarshal(resp.MessageBody, payload)
+	err = protocol.Unmarshal([]byte(resp.MessageBody), payload)
 
 	if err != nil {
 		return
 	}
 
-	port, err := payload.GetGraph().CurrentPort()
+	graph, exist := payload.GetGraph(payload.GetCurrentGraph())
+	if !exist {
+		err = fmt.Errorf("could not get graph of %s in MNSComponent.postMessage", payload.GetCurrentGraph())
+		return
+	}
+
+	graph.MoveForward()
+
+	port, err := graph.CurrentPort()
 
 	if err != nil {
 		return
+	}
+
+	fromUrl := ""
+	prePort, preErr := graph.PrevPort()
+	if preErr == nil {
+		fromUrl = prePort.GetUrl()
 	}
 
 	session := mail.NewSession()
 
 	session.WithPayload(payload)
-	session.WithFromTo("", port.GetUrl())
+	session.WithFromTo(fromUrl, port.GetUrl())
+
+	fbp.SessionWithPort(session, port.GetUrl(), false, port.GetMetadata())
 
 	err = p.opts.Postman.Post(
 		message.NewUserMessage(session),
@@ -159,6 +176,8 @@ func (p *MNSComponent) postMessage(resp ali_mns.MessageReceiveResponse) {
 	if err != nil {
 		return
 	}
+
+	return
 }
 
 func (p *MNSComponent) receiveMessage() {
@@ -171,7 +190,10 @@ func (p *MNSComponent) receiveMessage() {
 				}
 
 				for _, m := range resp.Messages {
-					p.postMessage(m)
+					err := p.postMessage(m)
+					if err != nil {
+						logrus.WithField("component", "mns").WithError(err).Errorln("post received mns message failured")
+					}
 				}
 			}
 		case err, ok := <-p.errChan:
@@ -205,12 +227,12 @@ func (p *MNSComponent) Stop() error {
 	wg.Add(len(p.queues))
 
 	for _, q := range p.queues {
-		go func() {
+		go func(queue mnsQueue) {
 			defer wg.Done()
-			logrus.WithField("component", "mns").WithField("queue", q.Name).Infoln("stopping...")
-			q.Queue.Stop()
-			logrus.WithField("component", "mns").WithField("queue", q.Name).Infoln("stopped.")
-		}()
+			logrus.WithField("component", "mns").WithField("queue", queue.Name).Infoln("stopping...")
+			queue.Queue.Stop()
+			logrus.WithField("component", "mns").WithField("queue", queue.Name).Infoln("stopped.")
+		}(q)
 	}
 
 	wg.Wait()
@@ -222,7 +244,7 @@ func (p *MNSComponent) Stop() error {
 	close(p.respChan)
 	close(p.stopC)
 
-	logrus.WithField("component", "mns").Infoln("Stopped.")
+	logrus.WithField("component", "mns").Infoln("all queues listener stopped.")
 
 	return nil
 }
@@ -230,8 +252,9 @@ func (p *MNSComponent) Stop() error {
 // It is a send out func
 func (p *MNSComponent) sendMessage(session mail.Session) (err error) {
 
+	logrus.WithField("component", "MNSComponent").WithField("To", session.To()).Debugln("send message")
+
 	fbp.BreakSession(session)
-	fmt.Println("break session on send message")
 
 	port := fbp.GetSessionPort(session)
 
@@ -277,9 +300,6 @@ func (p *MNSComponent) sendMessage(session mail.Session) (err error) {
 		err = errors.New("could not convert session payload to *protocol.Payload")
 		return
 	}
-
-	// the next reciver will process the next port
-	payload.GetGraph().MoveForward()
 
 	data, err := payload.ToBytes()
 

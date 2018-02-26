@@ -2,6 +2,7 @@ package fbp
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/go-spirit/spirit/mail"
@@ -96,136 +97,154 @@ func (p *fbpWorker) Init(opts ...worker.WorkerOption) {
 	}
 }
 
+var (
+	GraphNameOfError  = "errors"
+	GraphNameOfNormal = "normal"
+)
+
 func (p *fbpWorker) process(umsg mail.UserMessage) {
 
+	var err error
+
 	session := umsg.Session()
-
-	hasErrorBefore := session.Err() != nil
-
-	payload := session.Payload().(*protocol.Payload)
-
-	graph := payload.GetGraph()
-
-	if graph == nil {
-		p.EscalateFailure("Payload graph is empty", umsg)
-		return
-	}
-
-	var errH error
-	if p.opts.Router != nil {
-
-		handler := p.opts.Router.Route(session)
-
-		if handler != nil {
-			errH = handler(session)
-			if payload.GetMessage().GetError() != nil {
-				errH = payload.GetMessage().GetError()
-			}
-		}
-	}
-
-	if !hasErrorBefore {
-		err := p.moveForwardAndPost(umsg, errH)
-		if err != nil {
-			p.EscalateFailure(err, umsg)
-			return
-		}
-	}
-
-	return
-}
-
-func (p *fbpWorker) moveForwardAndPost(m mail.UserMessage, e error) (err error) {
-
-	session := m.Session()
-
 	if session == nil {
-		err = errors.New("session is nil")
-		return
-	}
-
-	sessionPort := GetSessionPort(session)
-	if sessionPort == nil {
-		err = errors.New("session did not have port info")
-		return
-	}
-
-	// errors info already processed, do not post to next
-	if sessionPort.IsErrorPort {
-		return
-	}
-
-	if session.Payload() == nil {
-		err = errors.New("payload is nil")
+		p.EscalateFailure("payload session is nil", umsg)
 		return
 	}
 
 	payload, ok := session.Payload().(*protocol.Payload)
 
 	if !ok {
-		err = errors.New("could not convert session's content to payload")
+		p.EscalateFailure(
+			fmt.Errorf("could not convert session payload to *protocol.Payload"),
+			umsg,
+		)
 		return
 	}
 
-	if e != nil {
-		session.WithError(e)
-		payload.GetMessage().SetError(e)
+	currentGraph := payload.GetCurrentGraph()
+
+	if currentGraph != GraphNameOfError &&
+		currentGraph != GraphNameOfNormal {
+
+		p.EscalateFailure(fmt.Errorf("unknown current graph name: '%s'", currentGraph), umsg)
+		return
 	}
 
-	graph := payload.GetGraph()
+	graph, exist := payload.GetGraph(currentGraph)
+
+	if !exist {
+		p.EscalateFailure(
+			fmt.Errorf("graph not exist: %s", currentGraph),
+			umsg,
+		)
+		return
+	}
+
+	var errH error
+	if p.opts.Router != nil {
+		handler := p.opts.Router.Route(session)
+
+		if handler != nil {
+			errH = handler(session)
+			if payload.GetMessage().GetErr() != nil {
+				errH = payload.GetMessage().GetErr()
+			}
+		}
+	}
+
+	// nothing todo while session breaked
+	if IsSessionBreaked(session) {
+		return
+	}
+
+	var nextSession mail.Session
+
+	if currentGraph == GraphNameOfNormal && errH != nil {
+
+		errGraph, exist := payload.GetGraph(GraphNameOfError)
+		if !exist {
+			p.EscalateFailure(
+				fmt.Errorf("the normal payload did not have error graph, normal graph name: %s, handler error: %s", currentGraph, errH),
+				umsg,
+			)
+		}
+
+		nextGraph := make(map[string]*protocol.Graph)
+
+		nextGraph[GraphNameOfError] = &protocol.Graph{
+			Name:  GraphNameOfError,
+			Seq:   0, // it will move forward bellow
+			Ports: errGraph.Ports,
+		}
+
+		newPayload := &protocol.Payload{
+			Id:           payload.GetId(),
+			Timestamp:    payload.GetTimestamp(),
+			CurrentGraph: GraphNameOfError,
+			Graphs:       nextGraph,
+			Message: &protocol.Message{
+				Id:     payload.GetMessage().GetId(),
+				Header: payload.GetMessage().GetHeader(), // TODO need copy
+				Body:   payload.GetMessage().GetBody(),
+			},
+		}
+
+		newPayload.Content().SetError(errH)
+
+		newSession := mail.NewSession()
+
+		newSession.WithPayload(newPayload)
+
+		nextSession = newSession
+
+	} else {
+		nextSession = session
+	}
+
+	if nextSession == nil {
+		return
+	}
 
 	current, err := graph.CurrentPort()
 	if err != nil {
+		p.EscalateFailure(
+			fmt.Errorf("get graph current port failure: %s, current graph: %s, seq: %d",
+				err,
+				currentGraph,
+				graph.GetSeq(),
+			),
+			umsg,
+		)
+	}
+
+	next, hasNext := graph.NextPort()
+
+	if !hasNext {
 		return
 	}
 
-	if session.Err() == nil {
+	graph.MoveForward()
 
-		if IsSessionBreaked(session) {
-			return
-		}
+	nextSession.WithFromTo(current.GetUrl(), next.GetUrl())
 
-		next, hasNext := graph.NextPort()
+	SessionWithPort(nextSession, next.GetUrl(), false, next.GetMetadata())
 
-		if !hasNext {
-			return
-		}
+	err = p.opts.Postman.Post(message.NewUserMessage(nextSession))
 
-		err = graph.MoveForward()
-		if err != nil {
-			return
-		}
-
-		session.WithFromTo(current.GetUrl(), next.GetUrl())
-
-		SessionWithPort(session, next.GetUrl(), false, next.GetMetadata())
-
-		err = p.opts.Postman.Post(message.NewUserMessage(session))
+	if err != nil {
+		p.EscalateFailure(
+			fmt.Errorf("post message failure: %s, current graph: %s, seq: %d, to url: %s",
+				err,
+				currentGraph,
+				graph.GetSeq(),
+				next.GetUrl(),
+			),
+			umsg,
+		)
 		return
-
-	} else {
-
-		nextPorts := graph.GetErrors()
-		currentURL := current.GetUrl()
-
-		for i := 0; i < len(nextPorts); i++ {
-
-			to := nextPorts[i].GetUrl()
-
-			if to == currentURL {
-				continue
-			}
-
-			newSession := session.Fork()
-			newSession.WithFromTo(currentURL, to)
-
-			SessionWithPort(newSession, to, true, nextPorts[i].GetMetadata())
-
-			umsg := message.NewUserMessage(newSession)
-			err = p.opts.Postman.Post(umsg)
-			return
-		}
 	}
 
 	return
+
 }

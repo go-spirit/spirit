@@ -84,6 +84,6 @@ func (p *Actor) Stop() error {
 }
 
 func (p *Actor) Receive(session mail.Session) error {
-	h := p.component.Handler()
+	h := p.component.Route(session)
 	return h(session)
 }

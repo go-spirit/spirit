@@ -31,6 +31,10 @@ type Contenter interface {
 	Content() Content
 }
 
+type IDer interface {
+	ID() string
+}
+
 type Session interface {
 	From() string
 	To() string
@@ -52,6 +56,7 @@ type Session interface {
 
 	Fork() Session
 
+	PayloadId() string
 	PayloadContent() Content
 
 	String() string
@@ -169,6 +174,15 @@ func (p *defaultSession) PayloadContent() Content {
 	return pay.Content()
 }
 
+func (p *defaultSession) PayloadId() string {
+	ider, ok := p.Payload().(IDer)
+	if !ok {
+		return ""
+	}
+
+	return ider.ID()
+}
+
 func (p *defaultSession) String() string {
 	from := p.From()
 	to := p.To()
@@ -188,5 +202,5 @@ type Content interface {
 	SetError(err error)
 
 	ContentType() (ct string, exist bool)
-	Unmarshal(v interface{}) (err error)
+	ToObject(v interface{}) (err error)
 }

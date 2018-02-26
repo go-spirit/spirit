@@ -195,7 +195,7 @@ func (p *Spirit) newWorker(name string, opts ...WorkerOption) (wk worker.Worker,
 	newWk, err := worker.New(
 		driver,
 		worker.Postman(p.postman),
-		worker.Handler(workerOptions.Handler),
+		worker.Router(workerOptions.HandlerRouter),
 	)
 
 	if err != nil {
@@ -268,7 +268,7 @@ func (p *Spirit) NewActor(name string, opts ...ActorOption) (act *Actor, err err
 	worker, err := p.newWorker(
 		name,
 		WorkerUrl(actOpts.url),
-		WorkerHandler(comp.Handler()),
+		WorkerHandlerRouter(comp),
 	)
 
 	if err != nil {

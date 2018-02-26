@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"path"
 	"strconv"
@@ -103,7 +104,13 @@ func (p *HTTPComponent) serve(c *gin.Context) {
 		return
 	}
 
-	port, err := payload.GetGraph().CurrentPort()
+	graph, exist := payload.GetGraph(payload.GetCurrentGraph())
+	if !exist {
+		err = fmt.Errorf("could not get graph of %s in HTTPComponent.serve", payload.GetCurrentGraph())
+		return
+	}
+
+	port, err := graph.CurrentPort()
 
 	if err != nil {
 		return
@@ -113,6 +120,8 @@ func (p *HTTPComponent) serve(c *gin.Context) {
 
 	session.WithPayload(payload)
 	session.WithFromTo("", port.GetUrl())
+
+	fbp.SessionWithPort(session, port.GetUrl(), false, port.GetMetadata())
 
 	var ctx context.Context
 	var cancel context.CancelFunc
@@ -185,8 +194,14 @@ func (p *HTTPComponent) sendMessage(session mail.Session) (err error) {
 		return
 	}
 
+	graph, exist := payload.GetGraph(payload.GetCurrentGraph())
+	if !exist {
+		err = fmt.Errorf("could not get graph of %s in HTTPComponent.sendMessage", payload.GetCurrentGraph())
+		return
+	}
+
 	// the next reciver will process the next port
-	payload.GetGraph().MoveForward()
+	graph.MoveForward()
 
 	item.c.JSON(http.StatusOK, payload)
 

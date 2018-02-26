@@ -4,13 +4,14 @@ package protocol;
 message Port {
 	int32 seq                    = 1;
 	string url                   = 2;
-	map<string, string> metadata = 3;
+	string graph_name            = 3;
+	map<string, string> metadata = 4;
 }
 
 message Graph {
-	int32 seq            = 1;
-	repeated Port ports  = 2;
-	repeated Port errors = 3;
+	string name          = 1;
+	int32 seq            = 2;
+	repeated Port ports  = 3;
 }
 
 message Error {
@@ -25,13 +26,14 @@ message Message {
 	string id                  = 1;
 	map<string, string> header = 2;
 	bytes body                 = 3;
-	Error error                = 4;
+	Error err                  = 4;
 }
 
 message Payload {
 	string id                   = 1;
 	int64 timestamp             = 2;
-	Graph graph                 = 3;
-	Message message             = 4;
+	string current_graph        = 3;
+	map<string, Graph> graphs   = 4;
 	map<string, string> context = 5;
+	Message message             = 6;
 }

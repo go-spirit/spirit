@@ -34,23 +34,16 @@ func (p *Payload) ToBytes() ([]byte, error) {
 	return proto.Marshal(p)
 }
 
-func (p *Graph) MoveForward() (err error) {
-	seq := p.GetSeq()
-	ports := p.GetPorts()
-
-	if len(ports) == 0 {
-		err = errors.New("payload graph's ports is empty")
-		return
-	}
-
-	if seq+1 < 0 || int(seq+1) >= len(ports) {
-		err = errors.New("bad graph seq while move forward")
-		return
-	}
-
+func (p *Graph) MoveForward() {
 	atomic.AddInt32(&p.Seq, 1)
+}
 
-	return
+func (p *Graph) IsFinished() bool {
+	if p.GetSeq() > int32(len(p.Ports)) {
+		return true
+	}
+
+	return false
 }
 
 func (p *Graph) CurrentPort() (port *Port, err error) {
@@ -62,7 +55,7 @@ func (p *Graph) CurrentPort() (port *Port, err error) {
 		return
 	}
 
-	if seq < 0 || int(seq) >= len(ports) {
+	if seq < 0 || int(seq) > len(ports) {
 		err = errors.New("bad graph seq while get current port")
 		return
 	}
@@ -88,7 +81,7 @@ func (p *Graph) PrevPort() (port *Port, err error) {
 		return
 	}
 
-	if seq-1 < 0 || int(seq-1) >= len(ports) {
+	if seq-1 < 0 || int(seq-1) > len(ports) {
 		err = errors.New("bad graph seq while get prev port")
 		return
 	}
@@ -113,13 +106,14 @@ func (p *Graph) NextPort() (port *Port, has bool) {
 		return nil, false
 	}
 
-	if seq+1 < 0 || int(seq+1) >= len(ports) {
+	if seq+1 < 0 || int(seq+1) > len(ports) {
 		return nil, false
 	}
 
 	for i := 0; i < len(ports); i++ {
 		if ports[i].GetSeq() == seq+1 {
 			port = ports[i]
+			has = true
 			return
 		}
 	}
@@ -155,7 +149,7 @@ func (p *Message) ContentType() (ct string, exist bool) {
 	return
 }
 
-func (p *Message) Unmarshal(v interface{}) (err error) {
+func (p *Message) ToObject(v interface{}) (err error) {
 	if p == nil {
 		err = errors.New("message is nil")
 		return
@@ -178,7 +172,7 @@ func (p *Message) Unmarshal(v interface{}) (err error) {
 	return decoder.Unmashal(p.GetBody(), v)
 }
 
-func (p *Message) Marshal() (data []byte, err error) {
+func (p *Message) ToBytes() (data []byte, err error) {
 
 	if p == nil {
 		return
@@ -270,7 +264,7 @@ func (p *Message) SetError(err error) {
 	switch e := err.(type) {
 	case *Error:
 		{
-			p.Error = e
+			p.Err = e
 
 			return
 		}
@@ -288,7 +282,7 @@ func (p *Message) SetError(err error) {
 				newErr.Context[k] = fmt.Sprintf("%v", v)
 			}
 
-			p.Error = newErr
+			p.Err = newErr
 
 			return
 		}
@@ -300,7 +294,7 @@ func (p *Message) SetError(err error) {
 				Description: e.Error(),
 			}
 
-			p.Error = newErr
+			p.Err = newErr
 
 			return
 		}
@@ -309,6 +303,46 @@ func (p *Message) SetError(err error) {
 	return
 }
 
+func (p *Payload) GetGraph(name string) (*Graph, bool) {
+	graphs := p.GetGraphs()
+	if graphs == nil {
+		return nil, false
+	}
+
+	g, exist := graphs[name]
+
+	return g, exist
+}
+
 func (p *Payload) Content() mail.Content {
 	return p.GetMessage()
+}
+
+func (p *Payload) ID() string {
+	if p == nil {
+		return ""
+	}
+
+	return p.GetId()
+}
+
+func (m *Graph) CopyPorts() []*Port {
+	if m != nil {
+		return nil
+	}
+
+	var ports []*Port
+	for i := 0; i < len(m.Ports); i++ {
+
+		ports = append(ports, &Port{
+			Seq:       m.Ports[i].GetSeq(),
+			GraphName: m.Ports[i].GetGraphName(),
+			Url:       m.Ports[i].GetUrl(),
+			Metadata:  m.Ports[i].GetMetadata(),
+		})
+
+	}
+
+	return ports
+
 }

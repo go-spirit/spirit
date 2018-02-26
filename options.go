@@ -7,8 +7,8 @@ import (
 )
 
 type WorkerOptions struct {
-	Url     string
-	Handler worker.HandlerFunc
+	Url           string
+	HandlerRouter worker.HandlerRouter
 }
 
 type WorkerOption func(*WorkerOptions)
@@ -19,9 +19,9 @@ func WorkerUrl(url string) WorkerOption {
 	}
 }
 
-func WorkerHandler(h worker.HandlerFunc) WorkerOption {
+func WorkerHandlerRouter(h worker.HandlerRouter) WorkerOption {
 	return func(w *WorkerOptions) {
-		w.Handler = h
+		w.HandlerRouter = h
 	}
 }
 
