@@ -9,9 +9,9 @@ import (
 	"github.com/go-spirit/spirit/doc"
 	"github.com/go-spirit/spirit/mail"
 	"github.com/go-spirit/spirit/message"
-	"github.com/go-spirit/spirit/protocol"
 	"github.com/go-spirit/spirit/worker"
 	"github.com/go-spirit/spirit/worker/fbp"
+	"github.com/go-spirit/spirit/worker/fbp/protocol"
 	"github.com/gogap/ali_mns"
 	"github.com/sirupsen/logrus"
 )
@@ -295,7 +295,7 @@ func (p *MNSComponent) sendMessage(session mail.Session) (err error) {
 	client := ali_mns.NewAliMNSClient(endpoint, akId, akSecret)
 	queue := ali_mns.NewMNSQueue(queueName, client)
 
-	payload, ok := session.Payload().(*protocol.Payload)
+	payload, ok := session.Payload().Interface().(*protocol.Payload)
 	if !ok {
 		err = errors.New("could not convert session payload to *protocol.Payload")
 		return

@@ -326,6 +326,10 @@ func (p *Payload) ID() string {
 	return p.GetId()
 }
 
+func (p *Payload) Interface() interface{} {
+	return p
+}
+
 func (m *Graph) CopyPorts() []*Port {
 	if m != nil {
 		return nil

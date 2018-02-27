@@ -35,6 +35,12 @@ type IDer interface {
 	ID() string
 }
 
+type Payload interface {
+	Interface() interface{}
+	IDer
+	Contenter
+}
+
 type Session interface {
 	From() string
 	To() string
@@ -42,7 +48,7 @@ type Session interface {
 
 	WithFromTo(from, to string)
 
-	Payload() interface{}
+	Payload() Payload
 	WithPayload(interface{})
 
 	Err() error
@@ -55,9 +61,6 @@ type Session interface {
 	Deadline() (deadline time.Time, ok bool)
 
 	Fork() Session
-
-	PayloadId() string
-	PayloadContent() Content
 
 	String() string
 }
@@ -130,8 +133,13 @@ func (p *defaultSession) Value(key interface{}) interface{} {
 	return p.ctx.Value(key)
 }
 
-func (p *defaultSession) Payload() interface{} {
-	return p.ctx.Value(ctxKeyPayload{})
+func (p *defaultSession) Payload() Payload {
+	if p == nil {
+		return nil
+	}
+
+	v, _ := p.ctx.Value(ctxKeyPayload{}).(Payload)
+	return v
 }
 
 func (p *defaultSession) WithPayload(payload interface{}) {
@@ -163,24 +171,6 @@ func (p *defaultSession) Done() <-chan struct{} {
 
 func (p *defaultSession) Deadline() (deadline time.Time, ok bool) {
 	return p.ctx.Deadline()
-}
-
-func (p *defaultSession) PayloadContent() Content {
-	pay, ok := p.Payload().(Contenter)
-	if !ok {
-		return nil
-	}
-
-	return pay.Content()
-}
-
-func (p *defaultSession) PayloadId() string {
-	ider, ok := p.Payload().(IDer)
-	if !ok {
-		return ""
-	}
-
-	return ider.ID()
 }
 
 func (p *defaultSession) String() string {

@@ -2,5 +2,5 @@
 
 all:
 
-proto:
-	protoc -I=${PWD}/protocol/proto --go_out=${PWD}/protocol ${PWD}/protocol/proto/protocol.proto
+proto-fbp:
+	protoc -I=${PWD}/worker/fbp/protocol/proto --go_out=${PWD}/worker/fbp/protocol ${PWD}/worker/fbp/protocol/proto/protocol.proto

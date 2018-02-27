@@ -16,9 +16,9 @@ import (
 	"github.com/go-spirit/spirit/doc"
 	"github.com/go-spirit/spirit/mail"
 	"github.com/go-spirit/spirit/message"
-	"github.com/go-spirit/spirit/protocol"
 	"github.com/go-spirit/spirit/worker"
 	"github.com/go-spirit/spirit/worker/fbp"
+	"github.com/go-spirit/spirit/worker/fbp/protocol"
 )
 
 type HTTPComponent struct {
@@ -184,7 +184,7 @@ func (p *HTTPComponent) sendMessage(session mail.Session) (err error) {
 		return
 	}
 
-	payload, ok := session.Payload().(*protocol.Payload)
+	payload, ok := session.Payload().Interface().(*protocol.Payload)
 	if !ok {
 		err = errors.New("could not convert session payload to *protocol.Payload")
 		return

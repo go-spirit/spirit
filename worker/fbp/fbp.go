@@ -7,8 +7,8 @@ import (
 
 	"github.com/go-spirit/spirit/mail"
 	"github.com/go-spirit/spirit/message"
-	"github.com/go-spirit/spirit/protocol"
 	"github.com/go-spirit/spirit/worker"
+	"github.com/go-spirit/spirit/worker/fbp/protocol"
 )
 
 var (
@@ -112,7 +112,7 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 		return
 	}
 
-	payload, ok := session.Payload().(*protocol.Payload)
+	payload, ok := session.Payload().Interface().(*protocol.Payload)
 
 	if !ok {
 		p.EscalateFailure(
