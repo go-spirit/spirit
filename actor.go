@@ -12,6 +12,8 @@ import (
 type ActorOptions struct {
 	url string
 
+	workerDriver string
+
 	componentDriver  string
 	componentOptions []component.Option
 
@@ -31,6 +33,12 @@ type ActorOption func(*ActorOptions)
 func ActorUrl(url string) ActorOption {
 	return func(a *ActorOptions) {
 		a.url = url
+	}
+}
+
+func ActorWorker(driver string) ActorOption {
+	return func(a *ActorOptions) {
+		a.workerDriver = driver
 	}
 }
 

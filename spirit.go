@@ -169,7 +169,7 @@ func (p *Spirit) WithPostman(pm mail.Postman) {
 	p.postman = pm
 }
 
-func (p *Spirit) newWorker(name string, opts ...WorkerOption) (wk worker.Worker, err error) {
+func (p *Spirit) newWorker(name, driver string, opts ...WorkerOption) (wk worker.Worker, err error) {
 
 	if len(name) == 0 {
 		err = ErrNameIsEmpty
@@ -178,15 +178,13 @@ func (p *Spirit) newWorker(name string, opts ...WorkerOption) (wk worker.Worker,
 
 	key := fmt.Sprintf("workers.%s", name)
 
-	driver := p.conf.GetString(key+".driver", "fbp")
-	if len(driver) == 0 {
-		err = fmt.Errorf("the driver of worker is empty", name)
-		return
-	}
+	// driver := p.conf.GetString(key+".driver", "fbp")
+	// if len(driver) == 0 {
+	// 	err = fmt.Errorf("the driver of worker is empty", name)
+	// 	return
+	// }
 
-	workerOptions := WorkerOptions{
-		Url: fmt.Sprintf("spirit://workers/%s", name),
-	}
+	workerOptions := WorkerOptions{}
 
 	for _, o := range opts {
 		o(&workerOptions)
@@ -237,8 +235,13 @@ func (p *Spirit) NewActor(name string, opts ...ActorOption) (act *Actor, err err
 		return
 	}
 
+	if len(actOpts.workerDriver) == 0 {
+		actOpts.workerDriver = "fbp"
+		logrus.Debugln("there is no worker driver specificed, use default worker of fbp")
+	}
+
 	if len(actOpts.url) == 0 {
-		actOpts.url = fmt.Sprintf("spirit://actors/%s/%s", actOpts.componentDriver, name)
+		actOpts.url = fmt.Sprintf("spirit://actors/%s/%s/%s", actOpts.workerDriver, actOpts.componentDriver, name)
 	}
 
 	componentConf := p.conf.GetConfig(fmt.Sprintf("components.%s.%s", actOpts.componentDriver, name))
@@ -267,6 +270,7 @@ func (p *Spirit) NewActor(name string, opts ...ActorOption) (act *Actor, err err
 
 	worker, err := p.newWorker(
 		name,
+		actOpts.workerDriver,
 		WorkerUrl(actOpts.url),
 		WorkerHandlerRouter(comp),
 	)
@@ -281,6 +285,11 @@ func (p *Spirit) NewActor(name string, opts ...ActorOption) (act *Actor, err err
 	}
 
 	p.actors[name] = act
+
+	logrus.WithField("url", act.Url()).
+		WithField("name", name).
+		WithField("worker", actOpts.workerDriver).
+		WithField("componet", actOpts.componentDriver).Debugln("actor registered")
 
 	return
 }
