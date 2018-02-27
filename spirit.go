@@ -244,6 +244,12 @@ func (p *Spirit) NewActor(name string, opts ...ActorOption) (act *Actor, err err
 		actOpts.url = fmt.Sprintf("spirit://actors/%s/%s/%s", actOpts.workerDriver, actOpts.componentDriver, name)
 	}
 
+	_, exist := p.actors[actOpts.url]
+	if exist {
+		err = fmt.Errorf("actor already registerd, url: %s", actOpts.url)
+		return
+	}
+
 	componentConf := p.conf.GetConfig(fmt.Sprintf("components.%s.%s", actOpts.componentDriver, name))
 	if componentConf == nil {
 		componentConf = config.NewConfig()
@@ -284,7 +290,7 @@ func (p *Spirit) NewActor(name string, opts ...ActorOption) (act *Actor, err err
 		component: comp,
 	}
 
-	p.actors[name] = act
+	p.actors[actOpts.url] = act
 
 	logrus.WithField("url", act.Url()).
 		WithField("name", name).
