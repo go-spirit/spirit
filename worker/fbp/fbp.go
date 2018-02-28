@@ -183,11 +183,7 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 			Timestamp:    payload.GetTimestamp(),
 			CurrentGraph: GraphNameOfError,
 			Graphs:       nextGraph,
-			Message: &protocol.Message{
-				Id:     payload.GetMessage().GetId(),
-				Header: payload.GetMessage().GetHeader(), // TODO need copy
-				Body:   payload.GetMessage().GetBody(),
-			},
+			Message:      payload.GetMessage().Copy().(*protocol.Message),
 		}
 
 		newPayload.Content().SetError(errH)

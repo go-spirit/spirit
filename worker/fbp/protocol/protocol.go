@@ -243,14 +243,10 @@ func (p *Message) Copy() mail.Content {
 		header[k] = v
 	}
 
-	var body []byte
-
-	copy(body, p.GetBody())
-
 	n := &Message{
 		Id:     p.GetId(),
 		Header: header,
-		Body:   body,
+		Body:   p.GetBody(),
 	}
 
 	return n

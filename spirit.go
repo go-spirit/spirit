@@ -157,9 +157,12 @@ func (p *Spirit) Run() (err error) {
 	return
 }
 
-func (p *Spirit) Stop() (err error) {
+func (p *Spirit) Stop() error {
 	for _, act := range p.actors {
-		act.Stop()
+		e := act.Stop()
+		if e != nil {
+			logrus.WithError(e).Errorln("stop actor")
+		}
 	}
 
 	return nil
@@ -177,12 +180,6 @@ func (p *Spirit) newWorker(name, driver string, opts ...WorkerOption) (wk worker
 	}
 
 	key := fmt.Sprintf("workers.%s", name)
-
-	// driver := p.conf.GetString(key+".driver", "fbp")
-	// if len(driver) == 0 {
-	// 	err = fmt.Errorf("the driver of worker is empty", name)
-	// 	return
-	// }
 
 	workerOptions := WorkerOptions{}
 
