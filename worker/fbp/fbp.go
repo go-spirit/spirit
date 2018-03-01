@@ -183,6 +183,7 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 			Timestamp:    payload.GetTimestamp(),
 			CurrentGraph: GraphNameOfError,
 			Graphs:       nextGraph,
+			Context:      copyMap(payload.GetContext()),
 			Message:      payload.GetMessage().Copy().(*protocol.Message),
 		}
 
@@ -243,4 +244,18 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 
 	return
 
+}
+
+func copyMap(src map[string]string) map[string]string {
+	if src == nil {
+		return nil
+	}
+
+	dst := make(map[string]string, len(src))
+
+	for k, v := range src {
+		dst[k] = v
+	}
+
+	return dst
 }
