@@ -23,6 +23,7 @@ import (
 
 type HTTPComponent struct {
 	opts component.Options
+	alias
 
 	router *gin.Engine
 }
@@ -41,8 +42,10 @@ func init() {
 
 }
 
-func NewHTTPComponent(opts ...component.Option) (srv component.Component, err error) {
-	s := &HTTPComponent{}
+func NewHTTPComponent(alias string, opts ...component.Option) (srv component.Component, err error) {
+	s := &HTTPComponent{
+		alias: alias,
+	}
 
 	s.init(opts...)
 
@@ -146,7 +149,7 @@ func (p *HTTPComponent) serve(c *gin.Context) {
 	)
 
 	if err != nil {
-		logrus.WithField("component", "http-raw").WithError(err).Errorln("post user message failure")
+		logrus.WithField("component", "http-raw").WithField("alias", p.alias).WithError(err).Errorln("post user message failure")
 		return
 	}
 
@@ -222,6 +225,13 @@ func (p *HTTPComponent) Start() error {
 
 func (p *HTTPComponent) Stop() error {
 	return nil
+}
+
+func (p *HTTPComponent) Alias() string {
+	if p == nil {
+		return ""
+	}
+	return p.alias
 }
 
 func (p *HTTPComponent) Document() doc.Document {

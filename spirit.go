@@ -262,6 +262,7 @@ func (p *Spirit) NewActor(name string, opts ...ActorOption) (act *Actor, err err
 
 	comp, err := component.NewComponent(
 		actOpts.componentDriver,
+		name,
 		compOptions...,
 	)
 

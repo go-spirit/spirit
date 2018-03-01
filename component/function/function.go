@@ -14,6 +14,7 @@ type componentDocKey struct{}
 
 type componentFunc struct {
 	handler worker.HandlerFunc
+	alias   string
 }
 
 func init() {
@@ -30,7 +31,7 @@ func Function(fn worker.HandlerFunc) component.Option {
 	}
 }
 
-func newComponentFunc(opts ...component.Option) (comp component.Component, err error) {
+func newComponentFunc(alias string, opts ...component.Option) (comp component.Component, err error) {
 
 	compOpts := &component.Options{}
 
@@ -46,6 +47,7 @@ func newComponentFunc(opts ...component.Option) (comp component.Component, err e
 	}
 
 	return &componentFunc{
+		alias:   alias,
 		handler: vFn,
 	}, nil
 }
@@ -56,6 +58,13 @@ func (p *componentFunc) Start() error {
 
 func (p *componentFunc) Stop() error {
 	return nil
+}
+
+func (p *componentFunc) Alias() string {
+	if p == nil {
+		return ""
+	}
+	return p.alias
 }
 
 func (p *componentFunc) Route(mail.Session) worker.HandlerFunc {

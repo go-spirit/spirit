@@ -36,7 +36,10 @@ type MNSComponent struct {
 	respChan chan ali_mns.BatchMessageReceiveResponse
 	errChan  chan error
 
-	stopC chan bool
+	stopC  chan bool
+	stopWg *sync.WaitGroup
+
+	alias string
 }
 
 func init() {
@@ -44,9 +47,11 @@ func init() {
 	doc.RegisterDocumenter("mns", &MNSComponent{})
 }
 
-func NewMNSComponent(opts ...component.Option) (comp component.Component, err error) {
+func NewMNSComponent(alias string, opts ...component.Option) (comp component.Component, err error) {
 	mnsComp := &MNSComponent{
+		alias:    alias,
 		stopC:    make(chan bool),
+		stopWg:   &sync.WaitGroup{},
 		respChan: make(chan ali_mns.BatchMessageReceiveResponse, 30),
 		errChan:  make(chan error, 30),
 	}
@@ -112,6 +117,13 @@ func (p *MNSComponent) init(opts ...component.Option) (err error) {
 	p.queues = mnsQueues
 
 	return
+}
+
+func (p *MNSComponent) Alias() string {
+	if p == nil {
+		return ""
+	}
+	return p.alias
 }
 
 func (p *MNSComponent) Start() error {
@@ -186,30 +198,30 @@ func (p *MNSComponent) receiveMessage() {
 		case resp, ok := <-p.respChan:
 			{
 				if !ok {
-					break
+					return
 				}
 
 				for _, m := range resp.Messages {
 					err := p.postMessage(m)
 					if err != nil {
-						logrus.WithField("component", "mns").WithError(err).Errorln("post received mns message failured")
+						logrus.WithField("component", "mns").WithField("alias", p.alias).WithError(err).Errorln("post received mns message failured")
 					}
 				}
 			}
 		case err, ok := <-p.errChan:
 			{
 				if !ok {
-					break
+					return
 				}
 
 				if !ali_mns.ERR_MNS_MESSAGE_NOT_EXIST.IsEqual(err) {
-					logrus.WithField("component", "mns").WithError(err).Errorln("receive mns message failure")
+					logrus.WithField("component", "mns").WithField("alias", p.alias).WithError(err).Errorln("receive mns message failure")
 				}
 			}
 		case <-p.stopC:
 			{
-				p.stopC <- true
-				break
+				p.stopWg.Done()
+				return
 			}
 		}
 	}
@@ -221,7 +233,7 @@ func (p *MNSComponent) Stop() error {
 		return nil
 	}
 
-	logrus.WithField("component", "mns").WithField("queue-count", len(p.queues)).Infoln("stopping...")
+	logrus.WithField("component", "mns").WithField("alias", p.alias).WithField("queue-count", len(p.queues)).Infoln("stopping...")
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(p.queues))
@@ -229,22 +241,25 @@ func (p *MNSComponent) Stop() error {
 	for _, q := range p.queues {
 		go func(queue mnsQueue) {
 			defer wg.Done()
-			logrus.WithField("component", "mns").WithField("queue", queue.Name).Infoln("stopping...")
+			logrus.WithField("component", "mns").WithField("alias", p.alias).WithField("queue", queue.Name).Infoln("stopping...")
 			queue.Queue.Stop()
-			logrus.WithField("component", "mns").WithField("queue", queue.Name).Infoln("stopped.")
+			logrus.WithField("component", "mns").WithField("alias", p.alias).WithField("queue", queue.Name).Infoln("stopped.")
 		}(q)
 	}
 
 	wg.Wait()
 
+	p.stopWg.Add(1)
+
 	p.stopC <- true
-	<-p.stopC
+
+	p.stopWg.Wait()
 
 	close(p.errChan)
 	close(p.respChan)
 	close(p.stopC)
 
-	logrus.WithField("component", "mns").Infoln("all queues listener stopped.")
+	logrus.WithField("component", "mns").WithField("alias", p.alias).Infoln("all queues listener stopped.")
 
 	return nil
 }

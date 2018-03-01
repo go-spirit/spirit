@@ -55,11 +55,12 @@ func WithValue(key, val interface{}) Option {
 type Component interface {
 	Start() error
 	Stop() error
+	Alias() string
 
 	worker.HandlerRouter
 }
 
-type NewComponentFunc func(...Option) (Component, error)
+type NewComponentFunc func(alias string, opts ...Option) (Component, error)
 
 var (
 	components     map[string]NewComponentFunc = make(map[string]NewComponentFunc)
@@ -107,15 +108,15 @@ func RegisterComponent(name string, fn NewComponentFunc) {
 	componentNames = append(componentNames, name)
 }
 
-func NewComponent(name string, opts ...Option) (srv Component, err error) {
-	fn, exist := components[name]
+func NewComponent(driver, alias string, opts ...Option) (srv Component, err error) {
+	fn, exist := components[driver]
 
 	if !exist {
-		err = fmt.Errorf("component not exist '%s'", name)
+		err = fmt.Errorf("component driver '%s' not exist", driver)
 		return
 	}
 
-	srv, err = fn(opts...)
+	srv, err = fn(alias, opts...)
 
 	return
 }
