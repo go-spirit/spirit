@@ -98,8 +98,8 @@ func (p *fbpWorker) Init(opts ...worker.WorkerOption) {
 }
 
 var (
-	GraphNameOfError  = "errors"
-	GraphNameOfNormal = "normal"
+	GraphNameOfError      = "error"
+	GraphNameOfEntrypoint = "entrypoint"
 )
 
 func (p *fbpWorker) process(umsg mail.UserMessage) {
@@ -125,7 +125,7 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 	currentGraph := payload.GetCurrentGraph()
 
 	if currentGraph != GraphNameOfError &&
-		currentGraph != GraphNameOfNormal {
+		currentGraph != GraphNameOfEntrypoint {
 
 		p.EscalateFailure(fmt.Errorf("unknown current graph name: '%s'", currentGraph), umsg)
 		return
@@ -160,12 +160,12 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 
 	var nextSession mail.Session
 
-	if currentGraph == GraphNameOfNormal && errH != nil {
+	if currentGraph == GraphNameOfEntrypoint && errH != nil {
 
 		errGraph, exist := payload.GetGraph(GraphNameOfError)
 		if !exist {
 			p.EscalateFailure(
-				fmt.Errorf("the normal payload did not have error graph, normal graph name: %s, handler error: %s", currentGraph, errH),
+				fmt.Errorf("the payload did not have error graph, graph name: %s, handler error: %s", currentGraph, errH),
 				umsg,
 			)
 		}
