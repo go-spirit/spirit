@@ -17,12 +17,13 @@ var (
 
 type ctxKeyPort struct{}
 type ctxValuePort struct {
-	IsErrorPort bool
-	Url         string
-	Metadata    map[string]string
+	CurrentGraph string
+	Url          string
+	Metadata     map[string]string
 }
 
 type ctxKeyBreakSession struct{}
+type ctxKeySwitchGraph struct{}
 
 type fbpWorker struct {
 	opts worker.WorkerOptions
@@ -33,6 +34,49 @@ type fbpWorker struct {
 
 func init() {
 	worker.RegisterWorker("fbp", NewFBPWorker)
+}
+
+func SwitchGraph(session mail.Session, toGraph string) (err error) {
+
+	if session == nil {
+		err = errors.New("payload session is nil")
+		return
+	}
+
+	if len(toGraph) == 0 {
+		err = errors.New("graph name is emtpy")
+		return
+	}
+
+	if toGraph == GraphNameOfError {
+		err = errors.New("could not switch graph to error by manual, just return error in component handler")
+		return
+	}
+
+	payload, ok := session.Payload().Interface().(*protocol.Payload)
+
+	if !ok {
+		err = fmt.Errorf("could not convert session payload to *protocol.Payload")
+		return
+	}
+
+	currentGraph := payload.GetCurrentGraph()
+
+	if currentGraph == toGraph {
+		return
+	}
+
+	graphs := payload.GetGraphs()
+
+	_, exist := graphs[toGraph]
+	if !exist {
+		err = fmt.Errorf("graph %s not exist, switch graph failure", toGraph)
+		return
+	}
+
+	session.WithValue(ctxKeySwitchGraph{}, toGraph)
+
+	return
 }
 
 func BreakSession(s mail.Session) {
@@ -53,11 +97,11 @@ func IsSessionBreaked(s mail.Session) bool {
 	return false
 }
 
-func SessionWithPort(s mail.Session, url string, isErrorPort bool, metadata map[string]string) {
+func SessionWithPort(s mail.Session, graph, url string, metadata map[string]string) {
 	s.WithValue(
 		ctxKeyPort{},
 		&ctxValuePort{
-			isErrorPort, url, metadata,
+			graph, url, metadata,
 		},
 	)
 }
@@ -69,6 +113,15 @@ func GetSessionPort(s mail.Session) *ctxValuePort {
 	}
 
 	return port
+}
+
+func GetSwitchGraphName(s mail.Session) string {
+	name, ok := s.Value(ctxKeySwitchGraph{}).(string)
+	if !ok {
+		return ""
+	}
+
+	return name
 }
 
 func NewFBPWorker(opts ...worker.WorkerOption) (worker worker.Worker, err error) {
@@ -102,140 +155,151 @@ var (
 	GraphNameOfEntrypoint = "entrypoint"
 )
 
-func (p *fbpWorker) process(umsg mail.UserMessage) {
+type fbpMessage struct {
+	Session         mail.Session
+	Payload         *protocol.Payload
+	CurrentGraph    *protocol.Graph
+	NextGraph       *protocol.Graph
+	CurrentPort     *protocol.Port
+	NextPort        *protocol.Port
+	IsBreakedUp     bool
+	HasNextPort     bool
+	NeedSwitchGraph bool
+}
 
-	var err error
+func (p *fbpWorker) parseMessage(umsg mail.UserMessage) (msg *fbpMessage, err error) {
 
 	session := umsg.Session()
 	if session == nil {
-		p.EscalateFailure("payload session is nil", umsg)
+		err = errors.New("payload session is nil")
 		return
 	}
 
 	payload, ok := session.Payload().Interface().(*protocol.Payload)
 
 	if !ok {
-		p.EscalateFailure(
-			fmt.Errorf("could not convert session payload to *protocol.Payload"),
-			umsg,
-		)
+		err = errors.New("could not convert session payload to *protocol.Payload")
 		return
 	}
 
-	currentGraph := payload.GetCurrentGraph()
-
-	if currentGraph != GraphNameOfError &&
-		currentGraph != GraphNameOfEntrypoint {
-
-		p.EscalateFailure(fmt.Errorf("unknown current graph name: '%s'", currentGraph), umsg)
-		return
-	}
-
-	graph, exist := payload.GetGraph(currentGraph)
+	currentGraphName := payload.GetCurrentGraph()
+	currentGraph, exist := payload.GetGraph(currentGraphName)
 
 	if !exist {
-		p.EscalateFailure(
-			fmt.Errorf("graph not exist: %s", currentGraph),
-			umsg,
-		)
+		err = fmt.Errorf("graph not exist: %s", currentGraph)
+		return
+	}
+
+	currentPort, err := currentGraph.CurrentPort()
+	if err != nil {
+		return
+	}
+
+	switchGraphName := GetSwitchGraphName(session)
+
+	var nextGraph *protocol.Graph
+	var nextPort *protocol.Port
+	var hasNextPort, needSwitchGraph bool
+
+	if len(switchGraphName) > 0 && switchGraphName != currentGraphName {
+		switchGraph, exist := payload.GetGraph(switchGraphName)
+		if !exist {
+			err = fmt.Errorf("graph not exist: %s", switchGraph)
+			return
+		}
+
+		nextGraph = switchGraph
+		nextPort, err = switchGraph.CurrentPort()
+
+		if err != nil {
+			return
+		}
+
+		needSwitchGraph = true
+
+	} else {
+		nextGraph = currentGraph
+		nextPort, hasNextPort = currentGraph.NextPort()
+	}
+
+	retMsg := &fbpMessage{
+		Session:         session,
+		Payload:         payload,
+		CurrentGraph:    currentGraph,
+		NextGraph:       nextGraph,
+		CurrentPort:     currentPort,
+		NextPort:        nextPort,
+		HasNextPort:     hasNextPort,
+		IsBreakedUp:     IsSessionBreaked(session),
+		NeedSwitchGraph: needSwitchGraph,
+	}
+
+	msg = retMsg
+
+	return
+}
+
+func (p *fbpWorker) process(umsg mail.UserMessage) {
+
+	fbpMsg, err := p.parseMessage(umsg)
+
+	if err != nil {
+		p.EscalateFailure(err, umsg)
 		return
 	}
 
 	var errH error
 	if p.opts.Router != nil {
-		handler := p.opts.Router.Route(session)
+		handler := p.opts.Router.Route(fbpMsg.Session)
 
 		if handler != nil {
-			errH = handler(session)
-			if payload.GetMessage().GetErr() != nil {
-				errH = payload.GetMessage().GetErr()
+			errH = handler(fbpMsg.Session)
+			if fbpMsg.Payload.GetMessage().GetErr() != nil {
+				errH = fbpMsg.Payload.GetMessage().GetErr()
 			}
 		}
 	}
 
-	// nothing todo while session breaked
-	if IsSessionBreaked(session) {
+	if fbpMsg.CurrentGraph.GetName() == GraphNameOfError {
 		return
 	}
 
-	var nextSession mail.Session
-
-	if currentGraph == GraphNameOfEntrypoint && errH != nil {
-
-		errGraph, exist := payload.GetGraph(GraphNameOfError)
-		if !exist {
-			p.EscalateFailure(
-				fmt.Errorf("the payload did not have error graph, graph name: %s, handler error: %s", currentGraph, errH),
-				umsg,
-			)
-		}
-
-		nextGraph := make(map[string]*protocol.Graph)
-
-		nextGraph[GraphNameOfError] = &protocol.Graph{
-			Name:  GraphNameOfError,
-			Seq:   0, // it will move forward bellow
-			Ports: errGraph.Ports,
-		}
-
-		newPayload := &protocol.Payload{
-			Id:           payload.GetId(),
-			Timestamp:    payload.GetTimestamp(),
-			CurrentGraph: GraphNameOfError,
-			Graphs:       nextGraph,
-			Context:      copyMap(payload.GetContext()),
-			Message:      payload.GetMessage().Copy().(*protocol.Message),
-		}
-
-		newPayload.Content().SetError(errH)
-
-		newSession := mail.NewSession()
-
-		newSession.WithPayload(newPayload)
-
-		nextSession = newSession
-
-	} else {
-		nextSession = session
-	}
-
-	if nextSession == nil {
-		return
-	}
-
-	current, err := graph.CurrentPort()
-	if err != nil {
+	errGraph, exist := fbpMsg.Payload.GetGraph(GraphNameOfError)
+	if !exist {
 		p.EscalateFailure(
-			fmt.Errorf("get graph current port failure: %s, current graph: %s, seq: %d",
-				err,
-				currentGraph,
-				graph.GetSeq(),
-			),
+			fmt.Errorf("the payload did not have error graph, graph name: %s, handler error: %s", fbpMsg.CurrentGraph.GetName(), errH),
 			umsg,
 		)
-	}
-
-	next, hasNext := graph.NextPort()
-
-	if !hasNext {
 		return
 	}
 
-	graph.MoveForward()
+	fbpMsg.NextGraph = errGraph
+	fbpMsg.NeedSwitchGraph = true
+	fbpMsg.Payload.Content().SetError(errH)
 
-	nextSession.WithFromTo(current.GetUrl(), next.GetUrl())
+	// nothing todo while session breaked or did not have next port
+	if fbpMsg.IsBreakedUp || !fbpMsg.HasNextPort {
+		return
+	}
 
-	SessionWithPort(nextSession, next.GetUrl(), false, next.GetMetadata())
+	if fbpMsg.NeedSwitchGraph == false {
+		fbpMsg.CurrentGraph.MoveForward()
+	}
 
-	err = p.opts.Postman.Post(message.NewUserMessage(nextSession))
+	fbpMsg.Session.WithFromTo(fbpMsg.CurrentPort.GetUrl(), fbpMsg.NextPort.GetUrl())
+
+	SessionWithPort(fbpMsg.Session, fbpMsg.NextGraph.GetName(), fbpMsg.NextPort.GetUrl(), fbpMsg.NextPort.GetMetadata())
+
+	err = p.opts.Postman.Post(message.NewUserMessage(fbpMsg.Session))
 
 	if err != nil {
 		p.EscalateFailure(
-			fmt.Errorf("post message failure: %s, current graph: %s, seq: %d, to url: %s",
+			fmt.Errorf("post message failure: %s, current graph: %s, seq: %d, next graph: %s, to url: %s",
 				err,
-				currentGraph,
-				graph.GetSeq(),
-				next.GetUrl(),
+				fbpMsg.CurrentGraph.GetName(),
+				fbpMsg.CurrentGraph.GetSeq(),
+				fbpMsg.NextGraph.GetName(),
+				fbpMsg.NextPort.GetUrl(),
 			),
 			umsg,
 		)
@@ -244,18 +308,4 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 
 	return
 
-}
-
-func copyMap(src map[string]string) map[string]string {
-	if src == nil {
-		return nil
-	}
-
-	dst := make(map[string]string, len(src))
-
-	for k, v := range src {
-		dst[k] = v
-	}
-
-	return dst
 }
