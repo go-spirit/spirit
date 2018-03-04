@@ -264,18 +264,20 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 		return
 	}
 
-	errGraph, exist := fbpMsg.Payload.GetGraph(GraphNameOfError)
-	if !exist {
-		p.EscalateFailure(
-			fmt.Errorf("the payload did not have error graph, graph name: %s, handler error: %s", fbpMsg.CurrentGraph.GetName(), errH),
-			umsg,
-		)
-		return
-	}
+	if errH != nil {
+		errGraph, exist := fbpMsg.Payload.GetGraph(GraphNameOfError)
+		if !exist {
+			p.EscalateFailure(
+				fmt.Errorf("the payload did not have error graph, graph name: %s, handler error: %s", fbpMsg.CurrentGraph.GetName(), errH),
+				umsg,
+			)
+			return
+		}
 
-	fbpMsg.NextGraph = errGraph
-	fbpMsg.NeedSwitchGraph = true
-	fbpMsg.Payload.Content().SetError(errH)
+		fbpMsg.NextGraph = errGraph
+		fbpMsg.NeedSwitchGraph = true
+		fbpMsg.Payload.Content().SetError(errH)
+	}
 
 	// nothing todo while session breaked or did not have next port
 	if fbpMsg.IsBreakedUp || !fbpMsg.HasNextPort {
