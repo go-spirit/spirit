@@ -60,12 +60,6 @@ func New(opts ...Option) (s *Spirit, err error) {
 		return
 	}
 
-	// defaultCache, err := cache.NewCache("go-cache",
-	// 	cache.Config(
-	// 		spiritOpts.config.GetConfig("cache"),
-	// 	),
-	// )
-
 	loggerConf := spiritOpts.config.GetConfig("logger")
 
 	if loggerConf != nil {

@@ -22,6 +22,10 @@ func Config(conf config.Configuration) Option {
 type Cache interface {
 	Set(k string, v interface{})
 	Get(k string) (interface{}, bool)
+
+	Increment(k string, delta int64) (int64, error)
+	Decrement(k string, delta int64) (int64, error)
+
 	Delete(k string)
 	Flush()
 }

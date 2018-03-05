@@ -1,9 +1,10 @@
 package gocache
 
 import (
+	"time"
+
 	"github.com/go-spirit/spirit/cache"
 	gocache "github.com/patrickmn/go-cache"
-	"time"
 )
 
 type GoCache struct {
@@ -52,6 +53,16 @@ func (p *GoCache) Get(k string) (interface{}, bool) {
 
 func (p *GoCache) Delete(k string) {
 	p.gocache.Delete(k)
+}
+
+func (p *GoCache) Increment(k string, delta int64) (v int64, err error) {
+	v, err = p.gocache.IncrementInt64(k, delta)
+	return
+}
+
+func (p *GoCache) Decrement(k string, delta int64) (v int64, err error) {
+	v, err = p.gocache.DecrementInt64(k, delta)
+	return
 }
 
 func (p *GoCache) Flush() {
