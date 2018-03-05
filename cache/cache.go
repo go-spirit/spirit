@@ -28,6 +28,9 @@ type Cache interface {
 
 	Delete(k string)
 	Flush()
+
+	IsLocal() bool
+	CanStoreInterface() bool
 }
 
 var (

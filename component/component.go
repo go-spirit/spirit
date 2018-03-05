@@ -15,7 +15,7 @@ import (
 
 type Options struct {
 	Postman mail.Postman
-	Cache   cache.Cache
+	Caches  *cache.Caches
 	Config  config.Configuration
 
 	Context context.Context
@@ -29,9 +29,9 @@ func Postman(man mail.Postman) Option {
 	}
 }
 
-func Cache(c cache.Cache) Option {
+func Caches(c *cache.Caches) Option {
 	return func(p *Options) {
-		p.Cache = c
+		p.Caches = c
 	}
 }
 

@@ -253,26 +253,16 @@ func (p *Spirit) NewActor(name string, opts ...ActorOption) (act *Actor, err err
 		componentConf = config.NewConfig()
 	}
 
-	cacheConf := componentConf.GetConfig("cache")
-	if cacheConf == nil {
-		cacheConf = config.NewConfig(config.ConfigString(`{ driver = go-cache }`))
-		logrus.WithField("component", componentConfKey).Debugln("cache not configured, use go-cache as default")
-	}
+	cacheConf := componentConf.GetConfig("caches")
 
-	componentCache, err := cache.NewCache(
-		cacheConf.GetString("driver", "go-cache"),
-		cache.Config(
-			cacheConf.GetConfig("options"),
-		),
-	)
-
+	caches, err := cache.NewCaches(cacheConf)
 	if err != nil {
 		return
 	}
 
 	compOptions := []component.Option{
 		component.Postman(p.postman),
-		component.Cache(componentCache),
+		component.Caches(caches),
 		component.Config(componentConf),
 	}
 

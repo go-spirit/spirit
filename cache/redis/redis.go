@@ -95,3 +95,11 @@ func (p *RedisCache) Decrement(k string, delta int64) (v int64, err error) {
 func (p *RedisCache) Flush() {
 	p.redisClient.FlushDB()
 }
+
+func (p *RedisCache) IsLocal() bool {
+	return false
+}
+
+func (p *RedisCache) CanStoreInterface() bool {
+	return false
+}

@@ -68,3 +68,11 @@ func (p *GoCache) Decrement(k string, delta int64) (v int64, err error) {
 func (p *GoCache) Flush() {
 	p.gocache.Flush()
 }
+
+func (p *GoCache) IsLocal() bool {
+	return true
+}
+
+func (p *GoCache) CanStoreInterface() bool {
+	return true
+}
