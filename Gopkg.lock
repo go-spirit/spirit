@@ -14,15 +14,6 @@
   version = "v1.1.0"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/go-akka/configuration"
-  packages = [
-    ".",
-    "hocon"
-  ]
-  revision = "9174887d3e970fc6dcccc787d91242bddc9c5473"
-
-[[projects]]
   name = "github.com/go-redis/redis"
   packages = [
     ".",
@@ -38,40 +29,10 @@
   version = "v6.9.2"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/gogap/config"
-  packages = ["."]
-  revision = "2c976168007d9963f0b5050f5ded9dd8ab1b793a"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/gogap/errors"
-  packages = ["."]
-  revision = "149c546090d0ac947ee5f6772d431e30cf0f6f3b"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/gogap/logrus_mate"
-  packages = ["."]
-  revision = "d007f270e2d66f12a09738791835fa1c64a1989a"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/gogap/stack"
-  packages = ["."]
-  revision = "fef68dddd4f8092a1be1acacb121f847315e5c94"
-
-[[projects]]
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   revision = "925541529c1fa6821df4e44ce2723319eb2be768"
   version = "v1.0.0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/orcaman/concurrent-map"
-  packages = ["."]
-  revision = "d4c23bd0e01134806215ffe65ba3fd22ec6721f7"
 
 [[projects]]
   name = "github.com/patrickmn/go-cache"
@@ -86,41 +47,14 @@
   version = "v1.0.0"
 
 [[projects]]
-  name = "github.com/sirupsen/logrus"
-  packages = ["."]
-  revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
-  version = "v1.0.4"
-
-[[projects]]
   name = "github.com/stretchr/testify"
   packages = ["assert"]
   revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
   version = "v1.2.1"
 
-[[projects]]
-  name = "github.com/urfave/cli"
-  packages = ["."]
-  revision = "cfb38830724cc34fedffe9a2a29fb54fa9169cd1"
-  version = "v1.20.0"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/crypto"
-  packages = ["ssh/terminal"]
-  revision = "91a49db82a88618983a78a06c1cbd4e00ab749ab"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/sys"
-  packages = [
-    "unix",
-    "windows"
-  ]
-  revision = "dd2ff4accc098aceecb86b36eaa7829b2a17b1c9"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7aabe8b1990c6eb197eb49255aa1694079da05a07ec2e42b3ab1293c726906bd"
+  inputs-digest = "8460779c2e5bd7f8ee23361d226630a9d8dfe091285eac1d46a2c208ebafa39b"
   solver-name = "gps-cdcl"
   solver-version = 1

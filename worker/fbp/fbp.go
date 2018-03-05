@@ -162,7 +162,7 @@ type fbpMessage struct {
 	NextGraph       *protocol.Graph
 	CurrentPort     *protocol.Port
 	NextPort        *protocol.Port
-	IsBreakedUp     bool
+	IsBreaked       bool
 	HasNextPort     bool
 	NeedSwitchGraph bool
 }
@@ -230,7 +230,7 @@ func (p *fbpWorker) parseMessage(umsg mail.UserMessage) (msg *fbpMessage, err er
 		CurrentPort:     currentPort,
 		NextPort:        nextPort,
 		HasNextPort:     hasNextPort,
-		IsBreakedUp:     IsSessionBreaked(session),
+		IsBreaked:       IsSessionBreaked(session),
 		NeedSwitchGraph: needSwitchGraph,
 	}
 
@@ -241,23 +241,35 @@ func (p *fbpWorker) parseMessage(umsg mail.UserMessage) (msg *fbpMessage, err er
 
 func (p *fbpWorker) process(umsg mail.UserMessage) {
 
-	fbpMsg, err := p.parseMessage(umsg)
+	session := umsg.Session()
+	if session == nil {
+		p.EscalateFailure(errors.New("payload session is nil"), umsg)
+		return
+	}
 
-	if err != nil {
-		p.EscalateFailure(err, umsg)
+	payload, ok := session.Payload().Interface().(*protocol.Payload)
+	if !ok {
+		p.EscalateFailure(errors.New("could not convert session payload to *protocol.Payload"), umsg)
 		return
 	}
 
 	var errH error
 	if p.opts.Router != nil {
-		handler := p.opts.Router.Route(fbpMsg.Session)
+		handler := p.opts.Router.Route(session)
 
 		if handler != nil {
-			errH = handler(fbpMsg.Session)
-			if fbpMsg.Payload.GetMessage().GetErr() != nil {
-				errH = fbpMsg.Payload.GetMessage().GetErr()
+			errH = handler(session)
+			if payload.GetMessage().GetErr() != nil {
+				errH = payload.GetMessage().GetErr()
 			}
 		}
+	}
+
+	fbpMsg, err := p.parseMessage(umsg)
+
+	if err != nil {
+		p.EscalateFailure(err, umsg)
+		return
 	}
 
 	if fbpMsg.CurrentGraph.GetName() == GraphNameOfError {
@@ -280,7 +292,7 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 	}
 
 	// nothing todo while session breaked or did not have next port
-	if fbpMsg.IsBreakedUp || !fbpMsg.HasNextPort {
+	if fbpMsg.IsBreaked || !fbpMsg.HasNextPort {
 		return
 	}
 

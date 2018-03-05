@@ -24,6 +24,7 @@
 #   go-tests = true
 #   unused-packages = true
 
+ignored = ["github.com/gogap/config", "github.com/gogap/errors", "github.com/gogap/logrus_mate", "github.com/sirupsen/logrus", "github.com/urfave/cli"]
 
 [[constraint]]
   name = "github.com/Workiva/go-datastructures"
@@ -34,28 +35,12 @@
   version = "6.9.2"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/gogap/config"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/gogap/errors"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/gogap/logrus_mate"
-
-[[constraint]]
   name = "github.com/golang/protobuf"
   version = "1.0.0"
 
 [[constraint]]
   name = "github.com/patrickmn/go-cache"
   version = "2.1.0"
-
-[[constraint]]
-  name = "github.com/sirupsen/logrus"
-  version = "1.0.4"
 
 [[constraint]]
   name = "github.com/stretchr/testify"
