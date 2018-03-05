@@ -33,7 +33,6 @@ type Spirit struct {
 
 	postman mail.Postman
 	reg     mail.Registry
-	cache   cache.Cache
 
 	workers map[string]worker.Worker
 	actors  map[string]*Actor
@@ -61,11 +60,11 @@ func New(opts ...Option) (s *Spirit, err error) {
 		return
 	}
 
-	defaultCache, err := cache.NewCache("go-cache",
-		cache.Config(
-			spiritOpts.config.GetConfig("cache"),
-		),
-	)
+	// defaultCache, err := cache.NewCache("go-cache",
+	// 	cache.Config(
+	// 		spiritOpts.config.GetConfig("cache"),
+	// 	),
+	// )
 
 	loggerConf := spiritOpts.config.GetConfig("logger")
 
@@ -76,7 +75,6 @@ func New(opts ...Option) (s *Spirit, err error) {
 	sp := &Spirit{
 		reg:     reg,
 		postman: man,
-		cache:   defaultCache,
 		workers: make(map[string]worker.Worker),
 		actors:  make(map[string]*Actor),
 		conf:    spiritOpts.config,
@@ -254,14 +252,33 @@ func (p *Spirit) NewActor(name string, opts ...ActorOption) (act *Actor, err err
 		return
 	}
 
-	componentConf := p.conf.GetConfig(fmt.Sprintf("components.%s.%s", actOpts.componentDriver, name))
+	componentConfKey := fmt.Sprintf("components.%s.%s", actOpts.componentDriver, name)
+
+	componentConf := p.conf.GetConfig(componentConfKey)
 	if componentConf == nil {
 		componentConf = config.NewConfig()
 	}
 
+	cacheConf := componentConf.GetConfig("cache")
+	if cacheConf == nil {
+		cacheConf = config.NewConfig(config.ConfigString(`{ driver = go-cache }`))
+		logrus.WithField("component", componentConfKey).Debugln("cache not configured, use go-cache as default")
+	}
+
+	componentCache, err := cache.NewCache(
+		cacheConf.GetString("driver", "go-cache"),
+		cache.Config(
+			cacheConf.GetConfig("options"),
+		),
+	)
+
+	if err != nil {
+		return
+	}
+
 	compOptions := []component.Option{
 		component.Postman(p.postman),
-		component.Cache(p.cache),
+		component.Cache(componentCache),
 		component.Config(componentConf),
 	}
 
