@@ -16,6 +16,7 @@ import (
 	"github.com/go-spirit/spirit/mail"
 	"github.com/go-spirit/spirit/worker"
 	"github.com/gogap/config"
+	"github.com/gogap/logrus_mate"
 
 	_ "github.com/go-spirit/spirit/cache/gocache"
 	_ "github.com/go-spirit/spirit/mail/mailbox"
@@ -65,6 +66,12 @@ func New(opts ...Option) (s *Spirit, err error) {
 			spiritOpts.config.GetConfig("cache"),
 		),
 	)
+
+	loggerConf := spiritOpts.config.GetConfig("logger")
+
+	if loggerConf != nil {
+		logrus_mate.Hijack(logrus.StandardLogger(), logrus_mate.ConfigString(loggerConf.String()))
+	}
 
 	sp := &Spirit{
 		reg:     reg,
