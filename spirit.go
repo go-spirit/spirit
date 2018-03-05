@@ -50,6 +50,12 @@ func New(opts ...Option) (s *Spirit, err error) {
 		o(spiritOpts)
 	}
 
+	loggerConf := spiritOpts.config.GetConfig("logger")
+
+	if loggerConf != nil {
+		logrus_mate.Hijack(logrus.StandardLogger(), logrus_mate.ConfigString(loggerConf.String()))
+	}
+
 	reg, err := mail.NewRegistry("tiny")
 	if err != nil {
 		return
@@ -58,12 +64,6 @@ func New(opts ...Option) (s *Spirit, err error) {
 	man, err := mail.NewPostman("tiny", mail.PostmanRegistry(reg))
 	if err != nil {
 		return
-	}
-
-	loggerConf := spiritOpts.config.GetConfig("logger")
-
-	if loggerConf != nil {
-		logrus_mate.Hijack(logrus.StandardLogger(), logrus_mate.ConfigString(loggerConf.String()))
 	}
 
 	sp := &Spirit{
