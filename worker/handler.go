@@ -12,7 +12,7 @@ func (p HandlerFunc) Run(session mail.Session) error {
 	return p(session)
 }
 
-func (p *HandlerFunc) Next(next HandlerFunc, subscribers ...SubscriberFunc) *HandlerFunc {
+func (p *HandlerFunc) Then(next HandlerFunc, subscribers ...SubscriberFunc) *HandlerFunc {
 	var h HandlerFunc = func(session mail.Session) (err error) {
 		err = (*p)(session)
 
