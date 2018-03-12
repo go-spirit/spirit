@@ -235,6 +235,14 @@ func (p *Message) SetBody(v interface{}) (err error) {
 	return
 }
 
+func (p *Message) SetHeader(key, val string) {
+	if p.Header == nil {
+		p.Header = make(map[string]string)
+	}
+
+	p.Header[key] = val
+}
+
 func (p *Message) Copy() mail.Content {
 
 	header := map[string]string{}

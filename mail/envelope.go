@@ -184,6 +184,7 @@ func (p *defaultSession) String() string {
 type Content interface {
 	GetId() string
 	GetHeader() map[string]string
+	SetHeader(key, val string)
 	GetBody() []byte
 	SetBody(interface{}) error
 	Copy() Content
