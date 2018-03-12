@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/go-spirit/spirit/context"
+	"github.com/gogap/context"
 )
 
 type ctxKeyPayload struct{}
