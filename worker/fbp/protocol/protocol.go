@@ -198,6 +198,7 @@ func (p *Message) ToBytes() (data []byte, err error) {
 func (p *Message) SetBody(v interface{}) (err error) {
 
 	if v == nil {
+		p.Body = nil
 		return
 	}
 
