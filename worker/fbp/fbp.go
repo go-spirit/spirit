@@ -278,7 +278,7 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 
 	if errH != nil {
 		errGraph, exist := fbpMsg.Payload.GetGraph(GraphNameOfError)
-		if !exist {
+		if !exist || errGraph == nil {
 			p.EscalateFailure(
 				fmt.Errorf("the payload did not have error graph, graph name: %s, handler error: %s", fbpMsg.CurrentGraph.GetName(), errH),
 				umsg,
@@ -286,8 +286,18 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 			return
 		}
 
+		nextPort, errP := errGraph.CurrentPort()
+		if errP != nil {
+			p.EscalateFailure(
+				fmt.Errorf("the payload get error graph's next port error, graph name: %s, handler error: %s, get error port error: %s", fbpMsg.CurrentGraph.GetName(), errH, errP),
+				umsg,
+			)
+			return
+		}
+
 		fbpMsg.NextGraph = errGraph
 		fbpMsg.NeedSwitchGraph = true
+		fbpMsg.NextPort = nextPort
 		fbpMsg.Payload.Content().SetError(errH)
 	}
 
