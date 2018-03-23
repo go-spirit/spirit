@@ -314,6 +314,8 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 
 	SessionWithPort(fbpMsg.Session, fbpMsg.NextGraph.GetName(), fbpMsg.NextPort.GetUrl(), fbpMsg.NextPort.GetMetadata())
 
+	fbpMsg.Payload.CurrentGraph = fbpMsg.NextGraph.Name
+
 	err = p.opts.Postman.Post(message.NewUserMessage(fbpMsg.Session))
 
 	if err != nil {
