@@ -53,7 +53,7 @@ func New(opts ...Option) (s *Spirit, err error) {
 	loggerConf := spiritOpts.config.GetConfig("logger")
 
 	if loggerConf != nil {
-		logrus_mate.Hijack(logrus.StandardLogger(), logrus_mate.ConfigString(loggerConf.String()))
+		logrus_mate.Hijack(logrus.StandardLogger(), logrus_mate.WithConfig(loggerConf))
 	}
 
 	reg, err := mail.NewRegistry("tiny")
