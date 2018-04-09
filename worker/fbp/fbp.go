@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	ErrWorkerHasNoPostman = errors.New("invoker has no postman")
+	ErrWorkerHasNoPostman  = errors.New("invoker has no postman")
+	ErrExecuteHandlerPanic = errors.New("execute handler panic")
 )
 
 type ctxKeyPort struct{}
@@ -240,6 +241,31 @@ func (p *fbpWorker) parseMessage(umsg mail.UserMessage) (msg *fbpMessage, err er
 	return
 }
 
+func (p *fbpWorker) callHandler(router worker.HandlerRouter, session mail.Session) (err error) {
+
+	if router == nil {
+		return
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			p.EscalateFailure(r, session)
+			err = ErrExecuteHandlerPanic
+			return
+		}
+	}()
+
+	handler := router.Route(session)
+
+	if handler == nil {
+		return
+	}
+
+	err = handler(session)
+
+	return
+}
+
 func (p *fbpWorker) process(umsg mail.UserMessage) {
 
 	session := umsg.Session()
@@ -254,19 +280,13 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 		return
 	}
 
-	var errH error
-	if p.opts.Router != nil {
-		handler := p.opts.Router.Route(session)
-
-		if handler != nil {
-			errH = handler(session)
-			if payload.GetMessage().GetErr() != nil {
-				errH = payload.GetMessage().GetErr()
-			}
-		}
+	errH := p.callHandler(p.opts.Router, session)
+	if errH == nil &&
+		payload.GetMessage().GetErr() != nil {
+		errH = payload.GetMessage().GetErr()
 	}
 
-	if errH != nil {
+	if errH != nil && payload.GetCurrentGraph() != GraphNameOfError {
 		logrus.WithError(errH).
 			WithField("payload-id", payload.ID()).
 			Errorln("Execute handler error")
