@@ -9,6 +9,7 @@ import (
 	"github.com/go-spirit/spirit/message"
 	"github.com/go-spirit/spirit/worker"
 	"github.com/go-spirit/spirit/worker/fbp/protocol"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -263,6 +264,12 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 				errH = payload.GetMessage().GetErr()
 			}
 		}
+	}
+
+	if errH != nil {
+		logrus.WithError(errH).
+			WithField("payload-id", payload.ID()).
+			Errorln("Execute handler error")
 	}
 
 	fbpMsg, err := p.parseMessage(umsg)
