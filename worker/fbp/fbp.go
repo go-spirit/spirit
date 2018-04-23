@@ -274,6 +274,10 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 		return
 	}
 
+	logrus.WithField("from", session.From()).
+		WithField("to", session.To()).
+		Debugln("Enter FBP worker process")
+
 	payload, ok := session.Payload().Interface().(*protocol.Payload)
 	if !ok {
 		p.EscalateFailure(errors.New("could not convert session payload to *protocol.Payload"), umsg)
