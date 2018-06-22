@@ -36,6 +36,7 @@ type Spirit struct {
 
 	workers map[string]worker.Worker
 	actors  map[string]*Actor
+	actorStartOrder []string
 
 	conf config.Configuration
 }
@@ -129,7 +130,8 @@ func (p *Spirit) generateActors() (err error) {
 
 func (p *Spirit) Run() (err error) {
 
-	for _, act := range p.actors {
+	for _, actUrl := range p.actorStartOrder {
+		act:=p.actors[actUrl]
 		err = act.Start()
 		if err != nil {
 			return
@@ -297,6 +299,7 @@ func (p *Spirit) NewActor(name string, opts ...ActorOption) (act *Actor, err err
 	}
 
 	p.actors[actOpts.url] = act
+	p.actorStartOrder=append(p.actorStartOrder,actOpts.url)
 
 	logrus.WithField("url", act.Url()).
 		WithField("name", name).
