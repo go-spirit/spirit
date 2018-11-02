@@ -11,10 +11,6 @@ import (
 )
 
 var (
-	defaultDispatcher = NewDefaultDispatcher(300)
-)
-
-var (
 	mailboxErrNS = "MAILBOX"
 )
 

@@ -14,11 +14,14 @@ import (
 	"github.com/go-spirit/spirit/component"
 	"github.com/go-spirit/spirit/doc"
 	"github.com/go-spirit/spirit/mail"
+	"github.com/go-spirit/spirit/mail/dispatcher"
 	"github.com/go-spirit/spirit/worker"
 	"github.com/gogap/config"
 	"github.com/gogap/logrus_mate"
 
 	_ "github.com/go-spirit/spirit/cache/gocache"
+	_ "github.com/go-spirit/spirit/mail/dispatcher/async/goroutine"
+	_ "github.com/go-spirit/spirit/mail/dispatcher/sync/synchronized"
 	_ "github.com/go-spirit/spirit/mail/mailbox"
 	_ "github.com/go-spirit/spirit/mail/postman/tiny"
 	_ "github.com/go-spirit/spirit/mail/registry/tiny"
@@ -34,8 +37,8 @@ type Spirit struct {
 	postman mail.Postman
 	reg     mail.Registry
 
-	workers map[string]worker.Worker
-	actors  map[string]*Actor
+	workers         map[string]worker.Worker
+	actors          map[string]*Actor
 	actorStartOrder []string
 
 	conf config.Configuration
@@ -131,7 +134,7 @@ func (p *Spirit) generateActors() (err error) {
 func (p *Spirit) Run() (err error) {
 
 	for _, actUrl := range p.actorStartOrder {
-		act:=p.actors[actUrl]
+		act := p.actors[actUrl]
 		err = act.Start()
 		if err != nil {
 			return
@@ -200,10 +203,20 @@ func (p *Spirit) newWorker(name, driver string, opts ...WorkerOption) (wk worker
 
 	mailboxDriver := p.conf.GetString(key+"mail.mailbox.driver", "unbounded")
 
+	dispatcherDriver := p.conf.GetString(key+"mail.dispatcher.driver", "goroutine")
+	throughput := p.conf.GetInt32(key+"mail.dispatcher.throughput", 300)
+
+	dispatcher, err := dispatcher.NewDispatcher(dispatcherDriver, int(throughput))
+
+	if err != nil {
+		return
+	}
+
 	box, err := mail.NewMailbox(
 		mailboxDriver,
 		mail.MailboxUrl(workerOptions.Url),
 		mail.MailboxMessageInvoker(newWk),
+		mail.MailboxDispatcher(dispatcher),
 	)
 
 	if err != nil {
@@ -299,7 +312,7 @@ func (p *Spirit) NewActor(name string, opts ...ActorOption) (act *Actor, err err
 	}
 
 	p.actors[actOpts.url] = act
-	p.actorStartOrder=append(p.actorStartOrder,actOpts.url)
+	p.actorStartOrder = append(p.actorStartOrder, actOpts.url)
 
 	logrus.WithField("url", act.Url()).
 		WithField("name", name).

@@ -18,7 +18,7 @@ func (p *fbpWorker) InvokeUserMessage(message interface{}) {
 		return
 	}
 
-	p.process(umsg)
+	go p.process(umsg)
 }
 
 func (p *fbpWorker) EscalateFailure(reason interface{}, message interface{}) {

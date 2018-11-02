@@ -11,9 +11,7 @@ func init() {
 
 func NewUnboundedLockfreeMailbox(opts ...mail.MailboxOption) (mail.Mailbox, error) {
 
-	mbOpts := &mail.MailboxOptions{
-		Dispatcher: defaultDispatcher,
-	}
+	mbOpts := &mail.MailboxOptions{}
 
 	for _, o := range opts {
 		o(mbOpts)
