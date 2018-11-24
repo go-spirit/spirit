@@ -303,10 +303,6 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 		return
 	}
 
-	if fbpMsg.CurrentGraph.GetName() == GraphNameOfError {
-		return
-	}
-
 	if errH != nil {
 		errGraph, exist := fbpMsg.Payload.GetGraph(GraphNameOfError)
 		if !exist || errGraph == nil {
@@ -326,10 +322,14 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 			return
 		}
 
-		fbpMsg.NextGraph = errGraph
-		fbpMsg.NeedSwitchGraph = true
-		fbpMsg.NextPort = nextPort
+		if fbpMsg.CurrentGraph.GetName() != GraphNameOfError {
+			fbpMsg.NextGraph = errGraph
+			fbpMsg.NeedSwitchGraph = true
+			fbpMsg.NextPort = nextPort
+		}
+
 		fbpMsg.Payload.Content().SetError(errH)
+		fbpMsg.Session.WithError(errH)
 	}
 
 	// nothing todo while session breaked or did not have next port
