@@ -47,6 +47,11 @@ func (p *GoCache) Set(k string, v interface{}) {
 	return
 }
 
+func (p *GoCache) SetAndExpireAt(k string, v interface{}, expr time.Duration) {
+	p.gocache.Set(k, v, expr)
+	return
+}
+
 func (p *GoCache) Get(k string) (interface{}, bool) {
 	return p.gocache.Get(k)
 }

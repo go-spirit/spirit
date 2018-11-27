@@ -2,6 +2,8 @@ package cache
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/gogap/config"
 )
 
@@ -21,6 +23,7 @@ func Config(conf config.Configuration) Option {
 
 type Cache interface {
 	Set(k string, v interface{})
+	SetAndExpireAt(k string, v interface{}, expr time.Duration)
 	Get(k string) (interface{}, bool)
 
 	Increment(k string, delta int64) (int64, error)

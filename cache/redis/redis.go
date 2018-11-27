@@ -68,6 +68,11 @@ func (p *RedisCache) Set(k string, v interface{}) {
 	return
 }
 
+func (p *RedisCache) SetAndExpireAt(k string, v interface{}, expr time.Duration) {
+	p.redisClient.Set(p.KeyPrefix+k, v, expr)
+	return
+}
+
 func (p *RedisCache) Get(k string) (interface{}, bool) {
 	ret, err := p.redisClient.Get(p.KeyPrefix + k).Result()
 
