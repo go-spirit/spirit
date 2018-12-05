@@ -169,7 +169,7 @@ func (p *Message) ToObject(v interface{}) (err error) {
 		return
 	}
 
-	return decoder.Unmashal(p.GetBody(), v)
+	return decoder.Unmarshal(p.GetBody(), v)
 }
 
 func (p *Message) ToBytes() (data []byte, err error) {

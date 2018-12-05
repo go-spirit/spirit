@@ -5,7 +5,7 @@ import (
 )
 
 type Codec interface {
-	Unmashal([]byte, interface{}) error
+	Unmarshal([]byte, interface{}) error
 	Marshal(interface{}) ([]byte, error)
 }
 
@@ -39,11 +39,12 @@ func RegisterCodec(name string, fn NewCodecFunc) {
 		panic("codec fn is nil")
 	}
 
-	_, exist := codecs[name]
-
-	if exist {
-		panic(fmt.Sprintf("codec already registered: %s", name))
+	c, err := fn()
+	if err != nil {
+		panic(err)
 	}
+
+	defaultCodecs[name] = c
 
 	codecs[name] = fn
 }

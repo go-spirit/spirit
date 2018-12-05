@@ -11,7 +11,7 @@ func NewJsonCodec() (Codec, error) {
 	return &Json{}, nil
 }
 
-func (p *Json) Unmashal(data []byte, v interface{}) error {
+func (p *Json) Unmarshal(data []byte, v interface{}) error {
 	return json.Unmarshal(data, v)
 }
 
