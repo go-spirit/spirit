@@ -236,6 +236,17 @@ func (p *Message) SetBody(v interface{}) (err error) {
 	return
 }
 
+func (p *Message) HeaderOf(key string) (val string, exist bool) {
+	h := p.GetHeader()
+	if h == nil {
+		return
+	}
+
+	val, exist = h[key]
+
+	return
+}
+
 func (p *Message) SetHeader(key, val string) {
 	if p.Header == nil {
 		p.Header = make(map[string]string)
