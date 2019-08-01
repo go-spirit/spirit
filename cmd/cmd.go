@@ -84,6 +84,11 @@ func newCmd(opts ...Option) Cmd {
 					Name:  "config",
 					Usage: "config file",
 				},
+				cli.StringFlag{
+					Name:  "config-provider,cp",
+					Usage: "the config provider you want to use",
+					Value: "hocon",
+				},
 			},
 		},
 	}
@@ -139,9 +144,10 @@ func (p *cmd) document(ctx *cli.Context) (err error) {
 func (p *cmd) run(ctx *cli.Context) (err error) {
 
 	conf := ctx.String("config")
+	configProvider := ctx.String("config-provider")
 
 	s, err := spirit.New(
-		spirit.ConfigFile(conf),
+		spirit.ConfigFile(conf, configProvider),
 	)
 
 	if err != nil {
