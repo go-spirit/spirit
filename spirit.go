@@ -46,9 +46,7 @@ type Spirit struct {
 
 func New(opts ...Option) (s *Spirit, err error) {
 
-	spiritOpts := &Options{
-		config: config.NewConfig(),
-	}
+	spiritOpts := &Options{}
 
 	for _, o := range opts {
 		o(spiritOpts)

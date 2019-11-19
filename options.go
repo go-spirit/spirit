@@ -26,18 +26,18 @@ func WorkerHandlerRouter(h worker.HandlerRouter) WorkerOption {
 }
 
 type Options struct {
-	config config.Configuration
+	config         config.Configuration
+	configProvider string
 }
 
 type Option func(*Options)
 
-func ConfigFile(filename string) Option {
+func ConfigFile(filename, configProvider string) Option {
 	return func(o *Options) {
-
-		o.config.WithFallback(
-			config.NewConfig(
-				config.ConfigFile(filename),
-			),
+		o.config = config.NewConfig(
+			config.ConfigFile(filename),
+			config.ConfigProviderByName(configProvider),
 		)
+		o.configProvider = configProvider
 	}
 }
