@@ -54,37 +54,37 @@ func newCmd(opts ...Option) Cmd {
 	cmd.app.Description = "go-spirit is a flow-based, actor-like message process framework"
 
 	cmd.app.Commands = cli.Commands{
-		cli.Command{
+		&cli.Command{
 			Name:  "list",
 			Usage: "list what you want to known",
 			Subcommands: cli.Commands{
-				cli.Command{
+				&cli.Command{
 					Name:   "components",
 					Action: cmd.components,
 				},
 			},
 		},
-		cli.Command{
+		&cli.Command{
 			Name:   "document",
 			Usage:  "print document",
 			Action: cmd.document,
 			Flags: []cli.Flag{
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:  "name",
 					Usage: "component name",
 				},
 			},
 		},
-		cli.Command{
+		&cli.Command{
 			Name:   "run",
 			Usage:  "run components",
 			Action: cmd.run,
 			Flags: []cli.Flag{
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:  "config",
 					Usage: "config file",
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:  "config-provider,cp",
 					Usage: "the config provider you want to use",
 					Value: "hocon",
