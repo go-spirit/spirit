@@ -42,6 +42,10 @@ func NewBoundedMailbox(opts ...mail.MailboxOption) (mail.Mailbox, error) {
 		o(mbOpts)
 	}
 
+	if mbOpts.MailboxSize <= 0 {
+		mbOpts.MailboxSize = 1024
+	}
+
 	q := &boundedMailboxQueue{
 		userMailbox: rbqueue.NewRingBuffer(uint64(mbOpts.MailboxSize)),
 		dropping:    mbOpts.DroppingOnFull,
