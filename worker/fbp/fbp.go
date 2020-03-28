@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/go-spirit/spirit/mail"
 	"github.com/go-spirit/spirit/message"
@@ -15,6 +16,11 @@ import (
 var (
 	ErrWorkerHasNoPostman  = errors.New("invoker has no postman")
 	ErrExecuteHandlerPanic = errors.New("execute handler panic")
+)
+
+var (
+	GraphNameOfError      = "error"
+	GraphNameOfEntrypoint = "entrypoint"
 )
 
 type ctxKeyPort struct{}
@@ -126,6 +132,79 @@ func GetSwitchGraphName(s mail.Session) string {
 	return name
 }
 
+func PartitionFromSession(s mail.Session, entrypointGraphName, errorGraphName string, otherGraphNames ...string) (session mail.Session, err error) {
+
+	if len(entrypointGraphName) == 0 || len(errorGraphName) == 0 {
+		err = errors.New("graph name could not be empty")
+		return
+	}
+
+	originPayload, ok := s.Payload().Interface().(*protocol.Payload)
+	if !ok {
+		err = errors.New("could not convert session payload to *protocol.Payload")
+		return
+	}
+
+	originCurrentGraph, exist := originPayload.GetGraph(originPayload.GetCurrentGraph())
+	if !exist {
+		err = fmt.Errorf("graph of %s not in orignal payload", originPayload.GetCurrentGraph())
+		return
+	}
+
+	entrypointGraph, exist := originPayload.GetGraph(entrypointGraphName)
+	if !exist {
+		err = fmt.Errorf("graph of %s not exist", entrypointGraphName)
+		return
+	}
+
+	errorGraph, exist := originPayload.GetGraph(errorGraphName)
+	if !exist {
+		err = fmt.Errorf("graph of %s not exist", errorGraphName)
+		return
+	}
+
+	newGraphs := map[string]*protocol.Graph{
+		GraphNameOfEntrypoint: entrypointGraph.CopyAndRename(GraphNameOfEntrypoint),
+		GraphNameOfError:      errorGraph.CopyAndRename(GraphNameOfError),
+	}
+
+	for _, graphName := range otherGraphNames {
+		g, exist := originPayload.GetGraph(errorGraphName)
+		if !exist {
+			err = fmt.Errorf("graph of %s not exist", graphName)
+			return
+		}
+
+		newGraphs[graphName] = g.Copy()
+	}
+
+	payload := &protocol.Payload{
+		Id:           originPayload.GetId(),
+		Timestamp:    time.Now().UnixNano(),
+		CurrentGraph: GraphNameOfEntrypoint,
+		Graphs:       newGraphs,
+		Message:      originPayload.Message.Copy().(*protocol.Message),
+	}
+
+	port, err := entrypointGraph.CurrentPort()
+	if err != nil {
+		return
+	}
+
+	originCurrentPort, err := originCurrentGraph.CurrentPort()
+	if err != nil {
+		return
+	}
+
+	session = mail.NewSession()
+	session.WithPayload(payload)
+	session.WithFromTo(originCurrentPort.GetUrl(), port.GetUrl())
+
+	SessionWithPort(session, entrypointGraph.GetName(), port.GetUrl(), port.GetMetadata())
+
+	return
+}
+
 func NewFBPWorker(opts ...worker.WorkerOption) (worker worker.Worker, err error) {
 
 	a := &fbpWorker{
@@ -151,11 +230,6 @@ func (p *fbpWorker) Init(opts ...worker.WorkerOption) {
 		o(&p.opts)
 	}
 }
-
-var (
-	GraphNameOfError      = "error"
-	GraphNameOfEntrypoint = "entrypoint"
-)
 
 type fbpMessage struct {
 	Session         mail.Session
@@ -188,7 +262,7 @@ func (p *fbpWorker) parseMessage(umsg mail.UserMessage) (msg *fbpMessage, err er
 	currentGraph, exist := payload.GetGraph(currentGraphName)
 
 	if !exist {
-		err = fmt.Errorf("graph not exist: %s", currentGraph)
+		err = fmt.Errorf("graph not exist: %s", currentGraphName)
 		return
 	}
 
@@ -206,7 +280,7 @@ func (p *fbpWorker) parseMessage(umsg mail.UserMessage) (msg *fbpMessage, err er
 	if len(switchGraphName) > 0 && switchGraphName != currentGraphName {
 		switchGraph, exist := payload.GetGraph(switchGraphName)
 		if !exist {
-			err = fmt.Errorf("graph not exist: %s", switchGraph)
+			err = fmt.Errorf("graph not exist: %s", switchGraphName)
 			return
 		}
 

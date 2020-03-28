@@ -51,7 +51,7 @@ func (p *Graph) CurrentPort() (port *Port, err error) {
 	ports := p.GetPorts()
 
 	if len(ports) == 0 {
-		err = errors.New("payload graph's ports is empty")
+		err = fmt.Errorf("payload graph's ports is empty, graph: %s", p.Name)
 		return
 	}
 
@@ -346,8 +346,24 @@ func (p *Payload) Interface() interface{} {
 	return p
 }
 
+func (m *Graph) Copy() *Graph {
+	return &Graph{
+		Name:  m.Name,
+		Seq:   m.Seq,
+		Ports: m.CopyPorts(),
+	}
+}
+
+func (m *Graph) CopyAndRename(name string) *Graph {
+	return &Graph{
+		Name:  name,
+		Seq:   m.Seq,
+		Ports: m.CopyPorts(),
+	}
+}
+
 func (m *Graph) CopyPorts() []*Port {
-	if m != nil {
+	if m == nil {
 		return nil
 	}
 
