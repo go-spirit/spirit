@@ -25,6 +25,7 @@ import (
 	_ "github.com/go-spirit/spirit/mail/mailbox"
 	_ "github.com/go-spirit/spirit/mail/postman/tiny"
 	_ "github.com/go-spirit/spirit/mail/registry/tiny"
+	_ "github.com/go-spirit/spirit/worker/fbp"
 )
 
 var (
