@@ -19,6 +19,7 @@ package protocol
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
+import "sync"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -32,6 +33,8 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type Port struct {
+	mapLocker sync.Mutex
+
 	Seq       int32             `protobuf:"varint,1,opt,name=seq" json:"seq,omitempty"`
 	Url       string            `protobuf:"bytes,2,opt,name=url" json:"url,omitempty"`
 	GraphName string            `protobuf:"bytes,3,opt,name=graph_name,json=graphName" json:"graph_name,omitempty"`

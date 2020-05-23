@@ -382,3 +382,9 @@ func (m *Graph) CopyPorts() []*Port {
 	return ports
 
 }
+
+func (p *Port) SetMetadata(key, value string) {
+	p.mapLocker.Lock()
+	p.Metadata[key] = value
+	p.mapLocker.Unlock()
+}
