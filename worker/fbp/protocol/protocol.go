@@ -34,6 +34,30 @@ func (p *Payload) ToBytes() ([]byte, error) {
 	return proto.Marshal(p)
 }
 
+func (p *Payload) Copy() mail.Payload {
+
+	graphs := map[string]*Graph{}
+
+	for k := range p.Graphs {
+		graphs[k] = p.Graphs[k].Copy()
+	}
+
+	context := map[string]string{}
+
+	for k := range p.Context {
+		context[k] = p.Context[k]
+	}
+
+	return &Payload{
+		Id:           p.Id,
+		Timestamp:    p.Timestamp,
+		CurrentGraph: p.CurrentGraph,
+		Graphs:       graphs,
+		Context:      context,
+		Message:      p.Message.copyRaw(),
+	}
+}
+
 func (p *Graph) MoveForward() {
 	atomic.AddInt32(&p.Seq, 1)
 }
@@ -256,6 +280,10 @@ func (p *Message) SetHeader(key, val string) {
 }
 
 func (p *Message) Copy() mail.Content {
+	return p.copyRaw()
+}
+
+func (p *Message) copyRaw() *Message {
 
 	header := map[string]string{}
 

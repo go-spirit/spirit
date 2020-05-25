@@ -39,6 +39,7 @@ type Payload interface {
 	Interface() interface{}
 	IDer
 	Contenter
+	Copy() Payload
 }
 
 type Session interface {
