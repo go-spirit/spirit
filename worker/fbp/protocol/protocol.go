@@ -295,6 +295,7 @@ func (p *Message) copyRaw() *Message {
 		Id:     p.GetId(),
 		Header: header,
 		Body:   p.GetBody(),
+		Err:    p.Err.Copy(),
 	}
 
 	return n
@@ -415,4 +416,25 @@ func (p *Port) SetMetadata(key, value string) {
 	p.mapLocker.Lock()
 	p.Metadata[key] = value
 	p.mapLocker.Unlock()
+}
+
+func (p *Error) Copy() *Error {
+
+	if p == nil {
+		return nil
+	}
+
+	ctx := make(map[string]string)
+
+	for k, v := range p.Context {
+		ctx[k] = v
+	}
+
+	return &Error{
+		Namespace:   p.Namespace,
+		Code:        p.Code,
+		Description: p.Description,
+		Stack:       p.Stack,
+		Context:     ctx,
+	}
 }
