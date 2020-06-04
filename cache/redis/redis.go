@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis"
 	"github.com/go-spirit/spirit/cache"
 	"github.com/gogap/config"
+	"gopkg.in/redis.v5"
 )
 
 type RedisCache struct {
@@ -98,7 +98,7 @@ func (p *RedisCache) Decrement(k string, delta int64) (v int64, err error) {
 }
 
 func (p *RedisCache) Flush() {
-	p.redisClient.FlushDB()
+	p.redisClient.FlushDb()
 }
 
 func (p *RedisCache) IsLocal() bool {
