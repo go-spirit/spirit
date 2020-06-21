@@ -399,11 +399,18 @@ func (m *Graph) CopyPorts() []*Port {
 	var ports []*Port
 	for i := 0; i < len(m.Ports); i++ {
 
+		newMetadata := map[string]string{}
+		metadata := m.Ports[i].GetMetadata()
+
+		for k, v := range metadata {
+			newMetadata[k] = v
+		}
+
 		ports = append(ports, &Port{
 			Seq:       m.Ports[i].GetSeq(),
 			GraphName: m.Ports[i].GetGraphName(),
 			Url:       m.Ports[i].GetUrl(),
-			Metadata:  m.Ports[i].GetMetadata(),
+			Metadata:  newMetadata,
 		})
 
 	}
