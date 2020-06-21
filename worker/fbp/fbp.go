@@ -350,13 +350,18 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 
 	logrus.WithField("from", session.From()).
 		WithField("to", session.To()).
-		Debugln("Enter FBP worker process")
+		Debugln("enter FBP worker process")
 
 	payload, ok := session.Payload().Interface().(*protocol.Payload)
 	if !ok {
 		p.EscalateFailure(errors.New("could not convert session payload to *protocol.Payload"), umsg)
 		return
 	}
+
+	logrus.WithField("from", session.From()).
+		WithField("to", session.To()).
+		WithField("payload-id", payload.ID()).
+		Traceln("payload found")
 
 	errH := p.callHandler(p.opts.Router, session)
 	if errH == nil &&
@@ -367,7 +372,7 @@ func (p *fbpWorker) process(umsg mail.UserMessage) {
 	if errH != nil && payload.GetCurrentGraph() != GraphNameOfError {
 		logrus.WithError(errH).
 			WithField("payload-id", payload.ID()).
-			Errorln("Execute handler error")
+			Errorln("execute handler error")
 	}
 
 	fbpMsg, err := p.parseMessage(umsg)

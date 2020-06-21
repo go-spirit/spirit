@@ -155,6 +155,8 @@ func (m *Error) GetContext() map[string]string {
 }
 
 type Message struct {
+	headerLocker sync.Mutex
+
 	Id     string            `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
 	Header map[string]string `protobuf:"bytes,2,rep,name=header" json:"header,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	Body   []byte            `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`

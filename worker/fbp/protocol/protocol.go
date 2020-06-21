@@ -189,7 +189,7 @@ func (p *Message) ToObject(v interface{}) (err error) {
 	decoder := codec.Select(ct)
 
 	if decoder == nil {
-		err = fmt.Errorf("not codec for content type: %s", ct)
+		err = fmt.Errorf("could not find codec for content type: %s", ct)
 		return
 	}
 
@@ -212,7 +212,7 @@ func (p *Message) ToBytes() (data []byte, err error) {
 	encoder := codec.Select(ct)
 
 	if encoder == nil {
-		err = fmt.Errorf("not codec for content type: %s", ct)
+		err = fmt.Errorf("could not find codec for content type: %s", ct)
 		return
 	}
 
@@ -243,7 +243,7 @@ func (p *Message) SetBody(v interface{}) (err error) {
 		encoder := codec.Select(ct)
 
 		if encoder == nil {
-			err = fmt.Errorf("not codec for content type: %s", ct)
+			err = fmt.Errorf("could not find codec for content type: %s", ct)
 			return
 		}
 
@@ -272,6 +272,9 @@ func (p *Message) HeaderOf(key string) (val string, exist bool) {
 }
 
 func (p *Message) SetHeader(key, val string) {
+	p.headerLocker.Lock()
+	defer p.headerLocker.Unlock()
+
 	if p.Header == nil {
 		p.Header = make(map[string]string)
 	}
